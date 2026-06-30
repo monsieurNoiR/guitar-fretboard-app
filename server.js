@@ -19,27 +19,59 @@ const options = {
   cert: fs.readFileSync(path.join(ROOT, 'cert.pem')),
 };
 
+const ROOT_WITH_SEP = ROOT.endsWith(path.sep) ? ROOT : ROOT + path.sep;
+
+function isSafeChild(filePath) {
+  // ROOT 自身、または ROOT/ 以下であることをセパレータ付きで確認
+  return filePath === ROOT || filePath.startsWith(ROOT_WITH_SEP);
+}
+
 const server = https.createServer(options, (req, res) => {
-  let urlPath = req.url.split('?')[0];
-  if (urlPath === '/') urlPath = '/index.html';
+  // パーセントエンコーディングをデコードしてからパス結合（%2e%2e%2f 等を正規化）
+  let decoded;
+  try {
+    decoded = decodeURIComponent(req.url.split('?')[0]);
+  } catch {
+    res.writeHead(400);
+    res.end('Bad Request');
+    return;
+  }
 
-  const filePath = path.join(ROOT, urlPath);
+  // NUL バイトを拒否
+  if (decoded.includes('\0')) {
+    res.writeHead(400);
+    res.end('Bad Request');
+    return;
+  }
 
-  if (!filePath.startsWith(ROOT)) {
+  if (decoded === '/') decoded = '/index.html';
+
+  // path.resolve でシンボリックリンクなしの正規パスを生成
+  const filePath = path.resolve(ROOT, '.' + decoded);
+
+  if (!isSafeChild(filePath)) {
     res.writeHead(403);
     res.end('Forbidden');
     return;
   }
 
-  fs.readFile(filePath, (err, data) => {
-    if (err) {
+  // シンボリックリンク経由の脱出を防ぐため realpath で確認
+  fs.realpath(filePath, (rpErr, realFilePath) => {
+    if (rpErr || !isSafeChild(realFilePath)) {
       res.writeHead(404);
       res.end('Not Found');
       return;
     }
-    const ext = path.extname(filePath);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
-    res.end(data);
+    fs.readFile(realFilePath, (err, data) => {
+      if (err) {
+        res.writeHead(404);
+        res.end('Not Found');
+        return;
+      }
+      const ext = path.extname(realFilePath);
+      res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+      res.end(data);
+    });
   });
 });
 
