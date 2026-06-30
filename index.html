@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>指板トレーナー</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     ホーム画面
+══════════════════════════════════════════════════════════ -->
+<div id="screen-home" class="screen active">
+  <header class="home-header">
+    <h1 class="app-title">指板トレーナー</h1>
+    <button id="btn-menu" class="btn-icon" aria-label="設定">☰</button>
+  </header>
+
+  <main class="home-main">
+    <!-- モード選択 -->
+    <section class="mode-section">
+      <div class="mode-btns">
+        <button id="btn-interval" class="mode-btn active-mode">インターバル編</button>
+        <button id="btn-chord"    class="mode-btn">コードトーン編</button>
+      </div>
+    </section>
+
+    <!-- インターバル編: LV一覧 -->
+    <section id="interval-section" class="level-section">
+      <ul id="lv-list" class="lv-list"></ul>
+      <button id="btn-practice" class="lv-btn lv-practice">練習モード（タイムなし）</button>
+    </section>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     ゲーム画面
+══════════════════════════════════════════════════════════ -->
+<div id="screen-game" class="screen">
+  <!-- 指板エリア（画面の大部分・上） -->
+  <div class="canvas-wrap">
+    <canvas id="fretboard-canvas"></canvas>
+  </div>
+
+  <!-- フッター（出題テキスト＋コントロール・下） -->
+  <footer class="game-footer">
+    <div class="question-area">
+      <span id="root-name" class="root-name"></span>
+      <span id="interval-name" class="interval-name">—</span>
+    </div>
+    <div class="game-controls">
+      <button id="btn-home-game" class="btn-icon" aria-label="ホームへ">←</button>
+      <span id="q-num" class="q-num">1 / 10</span>
+      <span id="timer" class="timer">0.0</span>
+      <button id="btn-replay" class="btn-text">もう一度</button>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     リザルト画面
+══════════════════════════════════════════════════════════ -->
+<div id="screen-result" class="screen">
+  <div class="result-inner">
+    <h2 class="result-title">結果</h2>
+    <p id="res-score" class="res-score">10 / 10 正解</p>
+    <p id="res-time"  class="res-time">タイム: 0.0秒</p>
+
+    <section class="ranking-section">
+      <h3>ベストタイム</h3>
+      <ol id="ranking-list" class="ranking-list"></ol>
+    </section>
+
+    <div class="result-btns">
+      <button id="btn-retry"        class="btn-primary">もう一度</button>
+      <button id="btn-home-result"  class="btn-secondary">ホームへ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     ハンバーガーメニュー（音量・波形）
+══════════════════════════════════════════════════════════ -->
+<div id="menu-panel" class="menu-panel">
+  <div class="menu-inner">
+    <div class="menu-header">
+      <span>設定</span>
+      <button id="btn-menu-close" class="btn-icon">✕</button>
+    </div>
+
+    <div class="menu-row">
+      <p class="pwa-hint">💡 ホーム画面に追加（PWAとしてインストール）すると横向きが自動でロックされます。</p>
+    </div>
+
+    <label class="menu-row">
+      <span>音量</span>
+      <input id="slider-volume" type="range" min="0" max="1" step="0.05" value="0.7">
+    </label>
+
+    <div class="menu-row menu-row-inline">
+      <span>開放弦</span>
+      <button id="btn-open-string" class="btn-text" data-excluded="false">含む</button>
+    </div>
+
+    <div class="menu-row">
+      <span>波形</span>
+      <div class="wave-btns">
+        <button class="wave-btn" data-wave="sine">sine</button>
+        <button class="wave-btn" data-wave="triangle">tri</button>
+        <button class="wave-btn" data-wave="sawtooth">saw</button>
+        <button class="wave-btn" data-wave="square">sq</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 縦持ちオーバーレイ -->
+<div id="portrait-overlay" class="portrait-overlay hidden">
+  <span style="font-size:2rem;">↻</span>
+  <p>横向きにしてください</p>
+</div>
+
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>
