@@ -24,13 +24,11 @@ export class Game {
 
     this._fb.onTap(({ stringIdx, fret }) => this.handleTap({ stringIdx, fret }));
 
-    this._score     = 0;
     this._qIndex    = 0;   // 現在の問題番号（0始まり）
     this._correct   = 0;
-    this._startTime = null;
     this._qStartTime= null;
     this._totalTime = 0;   // 回答中の累計時間（タイマーは回答中のみ動作）
-    this._timerHandle       = null;
+    this._playTimer         = null; // _playQuestion の 700ms 遅延タイマー
     this._nextQuestionTimer = null;
     this._currentQ  = null;
     this._answered  = false;
@@ -41,7 +39,6 @@ export class Game {
   // ── 公開API ──────────────────────────────────────────────
 
   start() {
-    this._score    = 0;
     this._qIndex   = 0;
     this._correct  = 0;
     this._totalTime= 0;
@@ -120,6 +117,7 @@ export class Game {
 
   stop() {
     this._stopTimer();
+    clearTimeout(this._playTimer);
     clearTimeout(this._nextQuestionTimer);
   }
 
@@ -131,7 +129,7 @@ export class Game {
     this._phase    = 'root';
     this._answered = false;
 
-    // 18F以上にしか正解がない問題を避けるため最大30回リトライ
+    // 表示窓内に正解ポジションが存在しない組み合わせを避けるため最大30回リトライ
     let rootPc, rootString, rootFret, rootMidi, semitones, targetPc, intervalInfo;
     let attempts = 0;
     do {
@@ -168,8 +166,9 @@ export class Game {
   }
 
   _playQuestion(q) {
+    clearTimeout(this._playTimer);
     this._audio.playNote(q.rootMidi, 0.6);
-    setTimeout(() => {
+    this._playTimer = setTimeout(() => {
       const targetMidi = q.rootMidi + q.semitones;
       this._audio.playNote(targetMidi, 0.8);
       if (!this._isPractice) this._startTimer();
