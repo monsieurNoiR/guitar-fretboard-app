@@ -385,6 +385,12 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
   color: var(--text-dim);
   line-height: 1.6;
 }
+.menu-link {
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+.menu-link:hover { text-decoration: underline; }
 
 /* ═══════════════════════════════════════════════════════════
    縦持ちオーバーレイ（横向きを促す全画面表示）

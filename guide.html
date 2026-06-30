@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111111">
+  <title>使い方ガイド — Guitar Fretboard Interval Trainer</title>
+  <style>
+    :root {
+      --bg:      #111;
+      --text:    #e0e0e0;
+      --muted:   #666;
+      --accent:  #e8963a;
+      --border:  rgba(255,255,255,0.1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, 'Helvetica Neue', sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* ── ヘッダー ── */
+    .guide-header {
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 10;
+    }
+    .guide-header a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+    .guide-header a:hover { text-decoration: underline; }
+    .guide-header h1 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text);
+      flex: 1;
+    }
+
+    /* ── ボディ ── */
+    .guide-body {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* ── セクション ── */
+    .guide-section {
+      padding: 24px 20px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .guide-section:last-child { border-bottom: none; padding-bottom: 40px; }
+
+    .guide-section h2 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .guide-section h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 16px 0 8px;
+    }
+
+    .guide-lead {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── 手順リスト ── */
+    .guide-steps {
+      padding-left: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .guide-steps li {
+      font-size: 0.85rem;
+      color: var(--text);
+      line-height: 1.65;
+    }
+    .guide-steps li strong { color: var(--text); }
+
+    /* ── 注記 ── */
+    .guide-note {
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 14px;
+      padding-left: 10px;
+      border-left: 2px solid var(--border);
+    }
+
+    /* ── テーブル ── */
+    .guide-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      margin-bottom: 14px;
+    }
+    .guide-table th,
+    .guide-table td {
+      border: 1px solid var(--border);
+      padding: 7px 10px;
+      text-align: left;
+    }
+    .guide-table th {
+      color: var(--accent);
+      font-weight: 600;
+      background: rgba(255,255,255,0.03);
+    }
+    .guide-table td { color: var(--text); }
+
+    /* ── アコーディオン FAQ ── */
+    .guide-qa {
+      border-top: 1px solid var(--border);
+      padding: 2px 0;
+    }
+    .guide-qa:last-child { border-bottom: 1px solid var(--border); }
+
+    .guide-qa summary {
+      font-size: 0.85rem;
+      color: var(--text);
+      padding: 12px 4px 12px 24px;
+      cursor: pointer;
+      list-style: none;
+      position: relative;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .guide-qa summary::-webkit-details-marker { display: none; }
+    .guide-qa summary::before {
+      content: '▶';
+      position: absolute;
+      left: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.6rem;
+      color: var(--muted);
+      transition: transform 0.15s;
+    }
+    .guide-qa[open] summary::before {
+      transform: translateY(-50%) rotate(90deg);
+    }
+    .guide-qa p {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.65;
+      padding: 0 4px 14px 24px;
+    }
+
+    /* ── 強調ボックス ── */
+    .guide-box {
+      background: rgba(232, 150, 58, 0.08);
+      border: 1px solid rgba(232, 150, 58, 0.25);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      font-size: 0.85rem;
+      line-height: 1.65;
+    }
+    .guide-box strong { color: var(--accent); }
+
+    /* ── CTAボタン ── */
+    .guide-cta {
+      display: block;
+      text-align: center;
+      margin: 24px 20px 0;
+    }
+    .guide-cta a {
+      display: inline-block;
+      background: var(--accent);
+      color: #111;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-decoration: none;
+      padding: 12px 32px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="guide-header">
+    <h1>使い方ガイド</h1>
+    <a href="./">アプリを開く →</a>
+  </header>
+
+  <main class="guide-body">
+
+    <!-- 1. コンセプト -->
+    <section class="guide-section">
+      <h2>このアプリについて</h2>
+      <p class="guide-lead">ギターの指板上で「耳で聴いた度数（インターバル）」の位置を直接タップして覚えるトレーニングPWAです。</p>
+
+      <div class="guide-box">
+        目指すのは <strong>「音が鳴ったら指が動く」</strong> 状態。<br>
+        コードネームや音楽理論を頭で処理するより先に、<br>
+        <strong>耳と手が直結</strong> するまで反復することが目的です。
+      </div>
+
+      <p class="guide-note">問題のたびにルート音と度数音を実際に再生し、音名を見る前にまず「聴く」ことを意識してください。指板上のポジションは画面をタップするだけで確認できます。</p>
+    </section>
+
+    <!-- 2. ホーム画面に追加 -->
+    <section class="guide-section">
+      <h2>ホーム画面への追加（推奨）</h2>
+      <p class="guide-lead">ホーム画面に追加してPWAとしてインストールすると、<strong>横向きが自動でロック</strong>されます。Safari ブラウザのまま使う場合は画面を手動で横向きにしてください。</p>
+
+      <h3>iOS / iPadOS（Safari）</h3>
+      <ol class="guide-steps">
+        <li>Safari でこのアプリのURLを開く</li>
+        <li>画面下部の <strong>共有ボタン</strong>（□に↑のアイコン）をタップ</li>
+        <li><strong>「ホーム画面に追加」</strong> を選択</li>
+        <li>名前を確認して <strong>「追加」</strong> をタップ</li>
+        <li>ホーム画面のアイコンから起動すると、横向きが自動でロックされた状態でアプリが開きます</li>
+      </ol>
+      <p class="guide-note">Chrome on iOS ではホーム画面への追加ができません。必ず <strong>Safari</strong> を使用してください。</p>
+      <p class="guide-note">縦向きでアクセスした場合は「横向きにしてください」と表示されます。端末を横向きにすると指板が表示されます。</p>
+    </section>
+
+    <!-- 3. 遊び方 -->
+    <section class="guide-section">
+      <h2>遊び方</h2>
+
+      <h3>ゲームの流れ</h3>
+      <ol class="guide-steps">
+        <li>
+          <strong>音を聴く</strong><br>
+          問題が始まると、ルート音と度数音が順番に再生されます。もう一度聴きたいときは <strong>「もう一度」ボタン</strong> をタップしてください。
+        </li>
+        <li>
+          <strong>① Root をタップ</strong><br>
+          ヘッダーに音名（例: 「C」）が大きく表示されます。指板上でその音をタップしてください。正しい位置をタップするとオレンジの印が付いて次のフェーズへ進みます。
+        </li>
+        <li>
+          <strong>② 度数音をタップ</strong><br>
+          ヘッダーに度数名（例: 「5th」）が表示されます。ルートから見てその度数にあたる音を指板上でタップしてください。
+        </li>
+        <li>
+          <strong>正解 → 次の問題へ</strong><br>
+          正解すると緑のマーカーが表示され、0.5秒後に自動で次の問題へ進みます。不正解は赤のマーカーが表示され、同じポジションで待機します（何度でもタップし直せます）。
+        </li>
+      </ol>
+
+      <h3>ヘッダーの見方</h3>
+      <ol class="guide-steps">
+        <li><strong>問題番号（例: 3 / 10）</strong> — 現在が何問目かを示します</li>
+        <li><strong>タイマー</strong> — 回答中の秒数を計測します（Root タップ確定から動作開始）</li>
+        <li><strong>音名 / 度数名</strong> — フェーズに合わせて現在タップすべき情報を大きく表示</li>
+      </ol>
+      <p class="guide-note">10問終わるとリザルト画面へ進み、正解数とタイム、過去のランキングが表示されます。</p>
+    </section>
+
+    <!-- 4. 正解判定のルール -->
+    <section class="guide-section">
+      <h2>正解判定のルール</h2>
+      <p class="guide-lead">このアプリ独自の判定ルールがあります。理解しておくと答えやすくなります。</p>
+
+      <h3>コードトーン（現在の全LV対象）</h3>
+      <div class="guide-box">
+        R・2nd・m3・3rd・4th・b5・5th・#5・6th・m7・7th は<br>
+        <strong>どのオクターブでも正解</strong> です。<br>
+        たとえば「5th を探せ」という問題で、ルートより低い位置に G があっても正解になります。
+      </div>
+      <p class="guide-note">ピッチクラス（音名）が一致していれば、ルートより上でも下でも正解として扱います。指板全体から探してください。</p>
+
+      <h3>テンション（9th・#9・b9・11th・#11・13th など）</h3>
+      <div class="guide-box">
+        テンションは <strong>ルートから1オクターブ以上高い位置</strong> にあるもののみ正解です。<br>
+        同じ音名でもルートより低い位置や同オクターブ内の音は不正解になります。
+      </div>
+      <p class="guide-note">テンションはルートに対して「上に積み重なった音」という意味合いがあるため、オクターブが重要になります。現バージョン（LV.1〜LV.Max）ではテンションは出題されません。</p>
+
+      <details class="guide-qa">
+        <summary>判定弦が限られている場合、正解が見つからないことはある？</summary>
+        <p>出題時に「指定された判定弦の表示範囲内に正解が存在するか」を自動チェックしています。答えが見つからない組み合わせは最大30回再生成されるため、タップ可能な範囲に必ず正解が存在します。</p>
+      </details>
+
+      <details class="guide-qa">
+        <summary>タップしても反応しない位置がある</summary>
+        <p>判定弦（灰色がかっている弦）はそのレベルの対象外です。また、ハンバーガーメニューで「開放弦を除外」をオンにしている場合は、0フレット（開放弦）の音が正解でもタップが無効になります。</p>
+      </details>
+    </section>
+
+    <!-- 5. 難易度レベル -->
+    <section class="guide-section">
+      <h2>難易度レベル</h2>
+      <p class="guide-lead">ホーム画面の「インターバル編」から難易度を選択します。LV が上がるほど出題音・基準音・判定弦が増えます。</p>
+
+      <table class="guide-table">
+        <thead>
+          <tr>
+            <th>モード</th>
+            <th>出題される度数</th>
+            <th>基準音</th>
+            <th>タップ可能な弦</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>練習</strong></td>
+            <td>R・3rd・5th</td>
+            <td>C 固定</td>
+            <td>6・5・4 弦</td>
+          </tr>
+          <tr>
+            <td><strong>LV.1</strong></td>
+            <td>R・3rd・5th</td>
+            <td>C 固定</td>
+            <td>6・5・4 弦</td>
+          </tr>
+          <tr>
+            <td><strong>LV.2</strong></td>
+            <td>+2nd・4th</td>
+            <td>C 固定</td>
+            <td>6・5・4・3 弦</td>
+          </tr>
+          <tr>
+            <td><strong>LV.3</strong></td>
+            <td>+m3・m7</td>
+            <td>E/A/D/G/C/B ランダム</td>
+            <td>6・5・4・3・2 弦</td>
+          </tr>
+          <tr>
+            <td><strong>LV.4</strong></td>
+            <td>+6th・#5</td>
+            <td>12音フルランダム<br>6〜4 弦×0/1 オクターブ</td>
+            <td>全弦</td>
+          </tr>
+          <tr>
+            <td><strong>LV.Max</strong></td>
+            <td>全12音</td>
+            <td>12音フルランダム<br>6〜4 弦×0/1 オクターブ</td>
+            <td>全弦</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="guide-note"><strong>練習モード</strong>はタイムの計測とランキング保存がなく、何度でも繰り返せます。初めての方はまず練習モードで操作感を掴んでください。</p>
+      <p class="guide-note">LV.4 / LV.Max では基準音が 6・5・4 弦のいずれかにランダムで配置され、さらに 1 オクターブ上のポジションも候補になります。高フレット寄りの問題が出た場合は、指板が自動でスクロールします。</p>
+
+      <details class="guide-qa">
+        <summary>どのレベルから始めればいい？</summary>
+        <p>まず「練習モード」でタップ操作に慣れてから LV.1 へ進むことを推奨します。LV.1〜LV.2 は基準音が C 固定なので、C メジャースケールや C コードのポジションを把握しているギタリストなら比較的スムーズに取り組めます。</p>
+      </details>
+
+      <details class="guide-qa">
+        <summary>スコアはどこに保存される？</summary>
+        <p>スコア（タイム）はレベルごとに端末のローカルストレージに保存され、リザルト画面でランキングとして確認できます。iOS Safari のプライベートブラウズモードでは保存されません。</p>
+      </details>
+    </section>
+
+    <!-- CTA -->
+    <div class="guide-cta">
+      <a href="./">アプリで練習を始める →</a>
+    </div>
+
+  </main>
+
+</body>
+</html>
