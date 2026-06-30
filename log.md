@@ -1,5 +1,43 @@
 # Changelog
 
+## v1.2.0 — 2026-06-30
+
+### 説明ページ追加
+- **`guide.html` 新規作成**: 初めて触る人向けのスタンドアロン説明ページ
+  - ホーム画面への追加手順（iOS Safari）、コンセプト、遊び方、正解判定ルール、難易度一覧
+  - FAQ アコーディオン（`<details>` 要素）
+  - Licketch ヘルプ画面と同構成・同トーン（ダークテーマ）
+- `index.html` のハンバーガーメニューに「使い方ガイド →」リンクを追加
+- `css/style.css` に `.menu-link` スタイルを追加
+- `sw.js` の ASSETS に `./guide.html` を追加（`fretboard-v9` に更新）
+- **公開URL**: `https://monsieurnoir.github.io/guitar-fretboard-app/guide.html`
+
+---
+
+## v1.1.1 — 2026-06-30
+
+### セキュリティ・バグ修正（コードレビュー対応）
+
+**セキュリティ修正**
+- **`server.js` Path Traversal 対策**:
+  - `ROOT_WITH_SEP` でセパレータ付き比較（ディレクトリ名プレフィックス誤許可を修正）
+  - `decodeURIComponent` でURLエンコードをデコード後に検証
+  - NULバイト（`\0`）を含むパスを 400 で拒否
+  - `fs.realpath` でシンボリックリンク先を検証
+
+**ゲームロジック修正**
+- **`_hasValidAnswer` の走査範囲修正**: 指板全体（0〜MAX_FRET）→ `calcDisplayRange` の表示窓内のみに限定（練習モードで表示窓外の正解を誤検出していたバグを修正）
+- **練習モード `judgeStrings` 拡張**: `[0]`（6弦のみ）→ `[0,1,2]`（低音3弦）に変更（5th=G が1弦の表示窓に入らず詰むケースを解消）
+- **タイマー管理強化**: `stop()` で `_playTimer` と `_nextQuestionTimer` の両方をキャンセル
+- **`_nextQuestion` ハンドル保存**: `setTimeout` の戻り値を `this._nextQuestionTimer` に保存
+
+**その他修正**
+- **localStorage guard**: `loadScores()` / `saveScore()` を `try/catch` で包み、iOS Safari プライベートブラウズの `QuotaExceededError` を無音処理
+- **touchend/click 二重発火防止**: `suppressNextClick` フラグでタップ直後の click イベントを抑制
+- **縦余白タップ誤検出防止**: `_handleTap` で Canvas 上下余白領域のタップを無視
+
+---
+
 ## v1.1.0 — 2026-06-30
 
 ### 機能拡張・バグ修正
@@ -34,7 +72,7 @@
 
 ## 技術負債・TODO
 
-- [ ] コードトーン編の実装（v1.1予定）
+- [ ] コードトーン編の実装（v1.5予定）
 - [ ] 指板幅の可変設定（v1.5予定）
 - [ ] アイコン画像の本番版作成
 - [ ] ハプティクスフィードバック（保留）
