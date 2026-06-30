@@ -147,18 +147,31 @@ function scoreKey(levelId) {
   return `score_interval_${levelId}`;
 }
 
+// iOS Safari プライベートブラウズでは parse / setItem が例外を投げるためガードする
+function loadScores(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function saveScore(levelId, time) {
-  const key    = scoreKey(levelId);
-  const scores = JSON.parse(localStorage.getItem(key) || '[]');
-  scores.push(time);
-  scores.sort((a, b) => a - b);
-  if (scores.length > MAX_RECORDS) scores.splice(MAX_RECORDS);
-  localStorage.setItem(key, JSON.stringify(scores));
+  try {
+    const key    = scoreKey(levelId);
+    const scores = loadScores(key);
+    scores.push(time);
+    scores.sort((a, b) => a - b);
+    if (scores.length > MAX_RECORDS) scores.splice(MAX_RECORDS);
+    localStorage.setItem(key, JSON.stringify(scores));
+  } catch {
+    // QuotaExceededError 等: ランキング保存を諦めるだけで画面は継続
+  }
 }
 
 function renderRanking(levelId) {
-  const key    = scoreKey(levelId);
-  const scores = JSON.parse(localStorage.getItem(key) || '[]');
+  const scores = loadScores(scoreKey(levelId));
   elRanking.replaceChildren();
   if (scores.length === 0) {
     const li = document.createElement('li');

@@ -30,7 +30,8 @@ export class Game {
     this._startTime = null;
     this._qStartTime= null;
     this._totalTime = 0;   // 回答中の累計時間（タイマーは回答中のみ動作）
-    this._timerHandle = null;
+    this._timerHandle       = null;
+    this._nextQuestionTimer = null;
     this._currentQ  = null;
     this._answered  = false;
     this._phase     = 'root'; // 'root' | 'interval'
@@ -94,9 +95,9 @@ export class Game {
         this._correct++;
         this._onCorrect?.({ score: this._correct, total: this._qIndex + 1 });
         if (this._isPractice) {
-          setTimeout(() => this._nextQuestion(), 800);
+          this._nextQuestionTimer = setTimeout(() => this._nextQuestion(), 800);
         } else {
-          setTimeout(() => {
+          this._nextQuestionTimer = setTimeout(() => {
             this._qIndex++;
             if (this._qIndex >= QUESTIONS_PER_SET) this._finish();
             else this._nextQuestion();
@@ -119,6 +120,7 @@ export class Game {
 
   stop() {
     this._stopTimer();
+    clearTimeout(this._nextQuestionTimer);
   }
 
   // ── 内部メソッド ──────────────────────────────────────────
@@ -143,7 +145,7 @@ export class Game {
       intervalInfo = ALL_INTERVALS.find(i => i.semitones === semitones)
                   || { name: String(semitones), isTension: semitones >= 12 };
       attempts++;
-    } while (!this._hasValidAnswer(rootPc, rootMidi, semitones) && attempts < 30);
+    } while (!this._hasValidAnswer(rootPc, rootMidi, semitones, rootFret) && attempts < 30);
 
     this._currentQ = { rootPc, rootString, rootFret, rootMidi, semitones, targetPc, intervalInfo };
 
@@ -208,8 +210,7 @@ export class Game {
 
       for (const oct of rootOctaves) {
         const fret = baseFret + oct * 12;
-        // フレット範囲内かつ calcDisplayRange が MAX_FRET 内に収まるか確認
-        if (fret <= MAX_FRET && calcDisplayRange(fret).end <= MAX_FRET) {
+        if (fret <= MAX_FRET) {
           candidates.push({ stringIdx: s, fret });
         }
       }
@@ -223,10 +224,18 @@ export class Game {
     return candidates[Math.floor(Math.random() * candidates.length)];
   }
 
-  // 判定弦上の 0〜MAX_FRET 内に有効な正解ポジションが存在するか確認
-  _hasValidAnswer(rootPc, rootMidi, semitones) {
+  // 実際にタップ可能な表示窓（calcDisplayRange）内に正解ポジションが存在するか確認
+  _hasValidAnswer(rootPc, rootMidi, semitones, rootFret) {
+    const { start, end } = calcDisplayRange(rootFret);
     for (const s of this._level.judgeStrings) {
-      for (let f = 0; f <= MAX_FRET; f++) {
+      // 開放弦ゾーン（start=0 かつ除外設定なし）
+      if (start === 0 && !this._excludeOpenStrings) {
+        if (isIntervalHit(rootPc, rootMidi, getPitchClass(s, 0), getMidi(s, 0), semitones)) {
+          return true;
+        }
+      }
+      // 表示フレット窓内（start+1 〜 end+1）
+      for (let f = start + 1; f <= end + 1; f++) {
         if (isIntervalHit(rootPc, rootMidi, getPitchClass(s, f), getMidi(s, f), semitones)) {
           return true;
         }

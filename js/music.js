@@ -170,17 +170,18 @@ export const INTERVAL_LEVELS = [
 ];
 
 // 練習モード（タイムなし、何度でも聞き直し）
+// judgeStrings を3弦に拡張: 1弦のみだと5th(G)が C/6弦起点の表示窓(7〜12F)に入らず詰む
 export const PRACTICE_LEVEL = {
   id: 'practice',
   label: '練習',
   intervals: [0, 4, 7],
   rootPcs: [0],
-  judgeStrings: [0],
+  judgeStrings: [0, 1, 2],
 };
 
 // ── 判定ロジック ───────────────────────────────────────────
 
-// コードトーン: ピッチクラス一致ならオクターブ問わず正解
+// コードトーン編で使用予定
 export function isChordToneHit(rootPc, tapPc) {
   return tapPc === rootPc;
 }
@@ -223,7 +224,7 @@ export function pickInterval(intervals) {
   return intervals[Math.floor(Math.random() * intervals.length)];
 }
 
-// 指定ピッチクラスが指板上に現れる全ポジション
+// コードトーン編で使用予定
 export function allPositionsForPc(pc) {
   const positions = [];
   for (let s = 0; s < STRING_COUNT; s++) {
@@ -234,7 +235,7 @@ export function allPositionsForPc(pc) {
   return positions;
 }
 
-// 指定ピッチクラスが指板上に現れる全ポジション（テンション判定用: midiベース）
+// コードトーン編で使用予定
 export function allPositionsForTension(rootMidi, semitones) {
   const positions = [];
   for (let s = 0; s < STRING_COUNT; s++) {

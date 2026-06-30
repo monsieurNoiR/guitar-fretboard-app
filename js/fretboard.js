@@ -228,22 +228,37 @@ export class Fretboard {
   // ── イベント ──────────────────────────────────────────────
 
   _bindEvents() {
-    const handler = (e) => {
+    // touchend 後にブラウザが合成する click を1回だけ抑止するフラグ
+    let suppressNextClick = false;
+
+    this._canvas.addEventListener('touchend', (e) => {
       e.preventDefault();
-      const pos = e.changedTouches ? e.changedTouches[0] : e;
+      suppressNextClick = true;
+      const t    = e.changedTouches[0];
       const rect = this._canvas.getBoundingClientRect();
-      const x = (pos.clientX - rect.left) * (this._canvas.width  / rect.width);
-      const y = (pos.clientY - rect.top)  * (this._canvas.height / rect.height);
-      this._handleTap(x, y);
-    };
-    this._canvas.addEventListener('touchend', handler, { passive: false });
-    this._canvas.addEventListener('click',    handler);
+      this._handleTap(
+        (t.clientX - rect.left) * (this._canvas.width  / rect.width),
+        (t.clientY - rect.top)  * (this._canvas.height / rect.height),
+      );
+    }, { passive: false });
+
+    this._canvas.addEventListener('click', (e) => {
+      if (suppressNextClick) { suppressNextClick = false; return; }
+      const rect = this._canvas.getBoundingClientRect();
+      this._handleTap(
+        (e.clientX - rect.left) * (this._canvas.width  / rect.width),
+        (e.clientY - rect.top)  * (this._canvas.height / rect.height),
+      );
+    });
   }
 
   _handleTap(x, y) {
     if (!this._tapCb) return;
     const layout = this._calcLayout(this._canvas.width, this._canvas.height);
-    const { PAD_LEFT, fretX, strY, fretStep, start, end } = layout;
+    const { PAD_LEFT, PAD_TOP, boardH, fretX, strY, fretStep, strStep, start, end } = layout;
+
+    // 指板描画エリア外（上下余白）のタップは無視
+    if (y < PAD_TOP - strStep / 2 || y > PAD_TOP + boardH + strStep / 2) return;
 
     // 弦: 最近接
     let closestStr = 0, minDist = Infinity;
