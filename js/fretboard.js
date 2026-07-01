@@ -19,7 +19,7 @@ const COLOR = {
   wrong:       '#f44336',
   root:        '#ff9800',
   tapHint:     'rgba(255,255,255,0.12)',
-  hint:        'rgba(255,255,255,0.7)',
+  hint:        'rgba(255,255,255,0.5)',
 };
 
 export class Fretboard {
