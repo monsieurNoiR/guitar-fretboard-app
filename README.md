@@ -93,7 +93,7 @@ iPad/iPhone から `https://192.168.x.x:3443` でアクセス（同一 Wi-Fi 必
 | 描画 | Canvas 2D |
 | スコア保存 | localStorage |
 | オフライン | Service Worker（キャッシュファースト） |
-| 公開 | GitHub Pages（予定） |
+| 公開 | GitHub Pages（公開中: https://monsieurnoir.github.io/guitar-fretboard-app/） |
 
 ---
 
