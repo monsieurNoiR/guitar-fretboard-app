@@ -13,7 +13,8 @@ const COLOR = {
   nut:         '#aaa',
   string:      '#c8a96e',
   posMark:     'rgba(255,255,255,0.18)',
-  maskStr:     'rgba(0,0,0,0.55)',
+  maskStr:     'rgba(0,0,0,0.78)',
+  activeStr:   'rgba(232,150,58,0.08)',
   correct:     '#4caf50',
   wrong:       '#f44336',
   root:        '#ff9800',
@@ -123,6 +124,20 @@ export class Fretboard {
     const { BASE_LEFT, OPEN_ZONE, PAD_LEFT, PAD_TOP, boardW, boardH,
             fretStep, strStep, fretX, strY, start, end } = layout;
 
+    // ─ 判定対象弦のハイライト帯（マスクとのコントラストを上げるため先に敷く）─
+    if (this._maskStrings.size > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, PAD_TOP, W, boardH);
+      ctx.clip();
+      for (let s = 0; s < STRING_COUNT; s++) {
+        if (this._maskStrings.has(s)) continue;
+        ctx.fillStyle = COLOR.activeStr;
+        ctx.fillRect(0, strY(s) - strStep / 2, W, strStep);
+      }
+      ctx.restore();
+    }
+
     // ─ ポジションマーク（フレット間に丸）─
     // ゾーンfの中心は fretX(f)-fretStep/2。表示ゾーンは start+1〜end+1
     for (let f = start + 1; f <= end + 1; f++) {
@@ -180,14 +195,23 @@ export class Fretboard {
   }
 
   _drawLayer2(ctx, layout) {
-    const { fretStep, strStep, fretX, strY, start } = layout;
+    const { fretStep, strStep, fretX, strY, start, PAD_TOP, boardH } = layout;
 
     // マスク（判定対象外の弦を半透明で覆う）
-    for (const s of this._maskStrings) {
-      const y  = strY(s) - strStep / 2;
-      const h  = strStep;
-      ctx.fillStyle = COLOR.maskStr;
-      ctx.fillRect(0, y, this._canvas.width, h);
+    // 盤面エリア内にクリップし、上端弦のマスク帯がフレット番号ラベル（PAD_TOP上部の余白）
+    // にはみ出さないようにする
+    if (this._maskStrings.size > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, PAD_TOP, this._canvas.width, boardH);
+      ctx.clip();
+      for (const s of this._maskStrings) {
+        const y = strY(s) - strStep / 2;
+        const h = strStep;
+        ctx.fillStyle = COLOR.maskStr;
+        ctx.fillRect(0, y, this._canvas.width, h);
+      }
+      ctx.restore();
     }
 
     // ルート音ハイライト（ヒント表示用、通常はnull）

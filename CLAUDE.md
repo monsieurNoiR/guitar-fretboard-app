@@ -62,9 +62,9 @@ server.js       Node.js HTTPSサーバー（開発用）
 ### 出題バリデーション
 `_hasValidAnswer(rootPc, rootMidi, semitones, rootFret)` が `calcDisplayRange(rootFret)` の表示窓内に正解ポジションが存在するかチェック。失敗時は最大 30 回リトライ。
 
-## 現在の状態（最終更新: 2026-06-30）
+## 現在の状態（最終更新: 2026-07-01）
 
-インターバル編 v1.2.0 完了・GitHub Pages 公開済み。
+インターバル編 v1.2.1 完了・GitHub Pages 公開済み（指板表示の視認性改善：マスクとフレット番号の重なり解消、マスクコントラスト強化、判定対象弦ハイライト追加）。
 コードトーン編は v1.1 予定。
 
 - **公開URL**: `https://monsieurnoir.github.io/guitar-fretboard-app/`
