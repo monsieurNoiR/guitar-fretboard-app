@@ -252,7 +252,7 @@ export class Fretboard {
     // 詰まった時のヒント（候補ポジションにフェードインする半透明ドット）
     if (this._hintPositions.length > 0) {
       for (const { stringIdx, fret } of this._hintPositions) {
-        this._drawCircle(ctx, layout, stringIdx, fret, COLOR.hint, 0.2, this._hintAlpha);
+        this._drawCircle(ctx, layout, stringIdx, fret, COLOR.hint, 0.8, this._hintAlpha);
       }
     }
 
