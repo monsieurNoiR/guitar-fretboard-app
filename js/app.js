@@ -2,6 +2,7 @@ import { INTERVAL_LEVELS, PRACTICE_LEVEL } from './music.js';
 import { AudioEngine }  from './audio.js';
 import { Fretboard }    from './fretboard.js';
 import { Game }         from './game.js';
+import { ChordGame }    from './chordGame.js';
 
 // ── 状態 ──────────────────────────────────────────────────
 let currentGame         = null;
@@ -15,8 +16,11 @@ const audio             = new AudioEngine();
 const screenHome   = document.getElementById('screen-home');
 const btnInterval  = document.getElementById('btn-interval');
 const btnChord     = document.getElementById('btn-chord');
+const intervalSection = document.getElementById('interval-section');
+const chordSection    = document.getElementById('chord-section');
 const lvList       = document.getElementById('lv-list');
 const btnPractice  = document.getElementById('btn-practice');
+const btnChordPractice = document.getElementById('btn-chord-practice');
 
 // ── ゲーム画面 ──
 const screenGame   = document.getElementById('screen-game');
@@ -125,6 +129,33 @@ function startGame(level) {
   });
 }
 
+// ── コードトーン編 練習開始（Stage 0: Root固定C・低音3弦・メジャー/マイナートライアド）──
+function startChordPractice() {
+  currentGame?.stop();
+
+  menuPanel.classList.remove('open');
+  showScreen('screen-game');
+
+  elTimer.textContent = '0.0';
+  elQNum.textContent  = '練習';
+
+  requestAnimationFrame(() => {
+    fretboard.resize();
+
+    currentGame = new ChordGame({
+      audio,
+      fretboard,
+      onProgress({ chordName, progressText }) {
+        elIntervalName.textContent = chordName;
+        elRootName.textContent     = progressText;
+      },
+    });
+
+    currentGame.start();
+    startTimerDisplay();
+  });
+}
+
 // ── タイマー表示（ゲーム画面用、秒単位で更新）─────────────────
 let _timerRAF = null;
 function startTimerDisplay() {
@@ -225,16 +256,19 @@ function renderRanking(levelId) {
 
 // ── イベントリスナー ───────────────────────────────────────
 
-// モード選択（v1はインターバル編のみ）
-btnInterval.addEventListener('click', () => {
-  lvList.parentElement.classList.remove('hidden');
-});
-btnChord.addEventListener('click', () => {
-  // コードトーン編はv1では準備中表示
-  alert('コードトーン編は準備中です。');
-});
+// モード選択（インターバル編 ⇄ コードトーン編）
+function selectMode(mode) {
+  const isInterval = mode === 'interval';
+  btnInterval.classList.toggle('active-mode', isInterval);
+  btnChord.classList.toggle('active-mode', !isInterval);
+  intervalSection.classList.toggle('hidden', !isInterval);
+  chordSection.classList.toggle('hidden', isInterval);
+}
+btnInterval.addEventListener('click', () => selectMode('interval'));
+btnChord.addEventListener('click', () => selectMode('chord'));
 
 btnPractice.addEventListener('click', () => startGame(PRACTICE_LEVEL));
+btnChordPractice.addEventListener('click', startChordPractice);
 
 btnReplay.addEventListener('click', () => currentGame?.replay());
 

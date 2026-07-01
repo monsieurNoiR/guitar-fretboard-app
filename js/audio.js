@@ -5,7 +5,8 @@ export class AudioEngine {
     this._ctx      = null;
     this.waveType  = 'square'; // sine / triangle / sawtooth / square
     this.volume    = 0.7;
-    this._activeVoice = null; // { osc, gain } 直前に鳴らした音（後勝ちで即カット）
+    this._activeVoice = null; // { osc, gain } 直前に鳴らした単音（後勝ちで即カット）
+    this._chordVoices = null; // { osc, gain }[] 直前に鳴らしたコード（同時発音、まとめて停止）
   }
 
   _ensureContext() {
@@ -13,31 +14,15 @@ export class AudioEngine {
     if (this._ctx.state === 'suspended') this._ctx.resume();
   }
 
-  // 単音再生（エンベロープ付き）。直前の音が鳴っている場合は即座にフェードアウトして
-  // 止め、後からタップ/再生された音を優先する（モノフォニック挙動）
-  playNote(midi, duration = 0.8) {
-    this._ensureContext();
+  // アタック(8ms)→ディケイ→サステイン→リリース（ピアノ系エンベロープ）の単一ボイスを生成
+  _createVoice(midi, duration, now) {
     const ctx  = this._ctx;
-    const now  = ctx.currentTime;
-
-    if (this._activeVoice) {
-      const { osc: prevOsc, gain: prevGain } = this._activeVoice;
-      try {
-        prevGain.gain.cancelScheduledValues(now);
-        prevGain.gain.setValueAtTime(prevGain.gain.value, now);
-        prevGain.gain.linearRampToValueAtTime(0, now + 0.02);
-        prevOsc.stop(now + 0.03);
-      } catch { /* 既に停止済みの場合は無視 */ }
-      this._activeVoice = null;
-    }
-
     const osc  = ctx.createOscillator();
     const gain = ctx.createGain();
 
     osc.type            = this.waveType;
     osc.frequency.value = midiToFreq(midi);
 
-    // アタック(8ms)→ディケイ→サステイン→リリース（ピアノ系エンベロープ）
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(this.volume, now + 0.008);
     gain.gain.exponentialRampToValueAtTime(this.volume * 0.45, now + 0.25);
@@ -49,15 +34,47 @@ export class AudioEngine {
     osc.start(now);
     osc.stop(now + duration + 0.05);
 
-    this._activeVoice = { osc, gain };
-    osc.onended = () => {
-      if (this._activeVoice?.osc === osc) this._activeVoice = null;
+    return { osc, gain };
+  }
+
+  // 即座にフェードアウトしてボイスを止める（20ms）
+  _fadeOutVoice({ osc, gain }, now) {
+    try {
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.setValueAtTime(gain.gain.value, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.02);
+      osc.stop(now + 0.03);
+    } catch { /* 既に停止済みの場合は無視 */ }
+  }
+
+  // 単音再生。直前の音が鳴っている場合は即座にフェードアウトして止め、
+  // 後からタップ/再生された音を優先する（モノフォニック挙動）
+  playNote(midi, duration = 0.8) {
+    this._ensureContext();
+    const now = this._ctx.currentTime;
+
+    if (this._activeVoice) {
+      this._fadeOutVoice(this._activeVoice, now);
+      this._activeVoice = null;
+    }
+
+    const voice = this._createVoice(midi, duration, now);
+    this._activeVoice = voice;
+    voice.osc.onended = () => {
+      if (this._activeVoice === voice) this._activeVoice = null;
     };
   }
 
-  // ストローク: 複数音を同時再生
+  // ストローク: 複数音を同時に鳴らし続けるポリフォニック再生。
+  // playNote の _activeVoice（単音カット用）とは別管理にし、互いに干渉しない
   playChord(midis, duration = 1.2) {
-    midis.forEach(midi => this.playNote(midi, duration));
+    this._ensureContext();
+    const now = this._ctx.currentTime;
+
+    if (this._chordVoices) {
+      this._chordVoices.forEach(v => this._fadeOutVoice(v, now));
+    }
+    this._chordVoices = midis.map(midi => this._createVoice(midi, duration, now));
   }
 
   // アルペジオ: 順次再生

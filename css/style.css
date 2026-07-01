@@ -175,6 +175,13 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
   border-style: dashed;
 }
 
+.chord-intro {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+
 /* ═══════════════════════════════════════════════════════════
    ゲーム画面
 ════════════════════════════════════════════════════════════ */

@@ -28,12 +28,13 @@ js/
   app.js        エントリポイント・状態管理・画面遷移・イベント配線
   music.js      音楽理論・ピッチクラス・コードデータ・LV設定
   fretboard.js  Canvas指板描画・タップ判定（Fretboardクラス）
-  audio.js      Web Audio API音再生（AudioEngineクラス）
-  game.js       ゲームロジック・問題生成・判定（Gameクラス）
+  audio.js      Web Audio API音再生（AudioEngineクラス。単音playNote/コードpolyphonic再生playChord）
+  game.js       インターバル編ゲームロジック・問題生成・判定（Gameクラス）
+  chordGame.js  コードトーン編ゲームロジック（ChordGameクラス、Stage 0）
 css/style.css
 index.html      3画面（ホーム/ゲーム/リザルト）+ ハンバーガーメニュー
 guide.html      初めて触る人向け説明ページ（スタンドアロン）
-sw.js           Service Worker（fretboard-v9）
+sw.js           Service Worker（fretboard-v10）
 manifest.json   PWA設定（orientation: landscape）
 server.js       Node.js HTTPSサーバー（開発用）
 ```
@@ -62,10 +63,19 @@ server.js       Node.js HTTPSサーバー（開発用）
 ### 出題バリデーション
 `_hasValidAnswer(rootPc, rootMidi, semitones, rootFret)` が `calcDisplayRange(rootFret)` の表示窓内に正解ポジションが存在するかチェック。失敗時は最大 30 回リトライ。
 
+### コードトーン編 Stage 0（`js/chordGame.js`）
+- **モード**: 練習のみ（タイマーなし、無限ループ）。10問セット・ランキングは対象外
+- **出題**: ルート C 固定・低音3弦（6〜4弦）固定・メジャー/マイナートライアドのみ（`CHORD_TYPES.maj` / `.min`）
+- **判定ロジック（未クリア集合方式）**: コード開始時に構成音のピッチクラス集合を持ち、順不同でタップして見つけた度数を集合から消す。集合が空になったら次のコードへ自動遷移（`NEXT_CHORD_DELAY = 800ms`）。フェーズ管理（Root→度数のような順序制約）はしない
+- **進捗表示**: `root-name` 要素に常時テキストで表示（例:「R ✓　m3 ✓　5th（未）」）。既存の `interval-name` 要素にはコード名（例:「C Minor」）を表示。ヒント機能や表示の補助ON/OFFは対象外
+- **ポリフォニック再生**: `AudioEngine.playChord(midis, duration)` で複数 `OscillatorNode` を同時発音。既存の単音再生 `playNote()`（`_activeVoice` で後勝ちカット）とは別管理（`_chordVoices`）にし、互いに干渉しない
+- 将来のStage 1以降で7th/テンション・出題度数の部分集合・対象弦の可変設定・出題順序制約（順序固定⇄順不同を段階的に混ぜる案）を追加予定
+
 ## 現在の状態（最終更新: 2026-07-01）
 
 インターバル編 v1.4.3 完了・GitHub Pages 公開済み（従来の改善に加え、ハンバーガーメニュー表示バグの修正、詰まった時のヒント表示機能（LV.Max除く、ON/OFF切替可）を追加。ヒントドットは実機確認とフィードバックを経て半径 0.2→0.8→0.32、不透明度 0.7→0.5 に調整済み）。
-コードトーン編は v1.5 予定・未着手。
+
+コードトーン編 v1.5 Stage 0 実装済み（ローカル確認済み、未デプロイ）。ルートC固定・低音3弦・メジャー/マイナートライアドのみの練習モード。未クリア集合方式の判定ロジック、`AudioEngine.playChord()` によるポリフォニック再生を新規実装。詳細仕様は上記「コードトーン編 Stage 0」セクション参照。Stage 1以降（7th・テンション・出題度数の部分集合・対象弦の可変設定・出題順序制約）は未着手。
 
 - **公開URL**: `https://monsieurnoir.github.io/guitar-fretboard-app/`
 - **ガイドページ**: `https://monsieurnoir.github.io/guitar-fretboard-app/guide.html`
