@@ -64,7 +64,7 @@ export class Game {
     const midi = getMidi(stringIdx, fret);
 
     // タップ位置の音を常に再生（正誤問わず）
-    this._audio.playNote(midi, 0.5);
+    this._audio.playNote(midi, 0.7);
 
     if (this._phase === 'root') {
       if (pc === q.rootPc) {
@@ -167,12 +167,12 @@ export class Game {
 
   _playQuestion(q) {
     clearTimeout(this._playTimer);
-    this._audio.playNote(q.rootMidi, 0.6);
+    this._audio.playNote(q.rootMidi, 0.8);
     this._playTimer = setTimeout(() => {
       const targetMidi = q.rootMidi + q.semitones;
-      this._audio.playNote(targetMidi, 0.8);
+      this._audio.playNote(targetMidi, 1.0);
       if (!this._isPractice) this._startTimer();
-    }, 700);
+    }, 800);
   }
 
   _startTimer() {

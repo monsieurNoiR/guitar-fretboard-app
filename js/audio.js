@@ -5,6 +5,7 @@ export class AudioEngine {
     this._ctx      = null;
     this.waveType  = 'square'; // sine / triangle / sawtooth / square
     this.volume    = 0.7;
+    this._activeVoice = null; // { osc, gain } 直前に鳴らした音（後勝ちで即カット）
   }
 
   _ensureContext() {
@@ -12,11 +13,23 @@ export class AudioEngine {
     if (this._ctx.state === 'suspended') this._ctx.resume();
   }
 
-  // 単音再生（エンベロープ付き）
+  // 単音再生（エンベロープ付き）。直前の音が鳴っている場合は即座にフェードアウトして
+  // 止め、後からタップ/再生された音を優先する（モノフォニック挙動）
   playNote(midi, duration = 0.8) {
     this._ensureContext();
     const ctx  = this._ctx;
     const now  = ctx.currentTime;
+
+    if (this._activeVoice) {
+      const { osc: prevOsc, gain: prevGain } = this._activeVoice;
+      try {
+        prevGain.gain.cancelScheduledValues(now);
+        prevGain.gain.setValueAtTime(prevGain.gain.value, now);
+        prevGain.gain.linearRampToValueAtTime(0, now + 0.02);
+        prevOsc.stop(now + 0.03);
+      } catch { /* 既に停止済みの場合は無視 */ }
+      this._activeVoice = null;
+    }
 
     const osc  = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -35,6 +48,11 @@ export class AudioEngine {
 
     osc.start(now);
     osc.stop(now + duration + 0.05);
+
+    this._activeVoice = { osc, gain };
+    osc.onended = () => {
+      if (this._activeVoice?.osc === osc) this._activeVoice = null;
+    };
   }
 
   // ストローク: 複数音を同時再生
