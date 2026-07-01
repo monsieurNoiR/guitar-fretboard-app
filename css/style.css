@@ -347,23 +347,35 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
   z-index: 100;
   display: flex;
   flex-direction: column;
+  /* iOS safe area 対応 */
+  padding-top:    env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .menu-panel.open { right: 0; }
 
-.menu-inner {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
+/* ヘッダーは固定し、本体（.menu-inner）だけを縦スクロール可能にする
+   （画面が低い端末でメニューが縦に収まらず、下部の項目が見えなくなる問題への対応） */
 .menu-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-weight: bold;
   font-size: 1rem;
+  flex-shrink: 0;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.menu-inner {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .menu-row {
