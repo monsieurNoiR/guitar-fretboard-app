@@ -64,8 +64,8 @@ server.js       Node.js HTTPSサーバー（開発用）
 
 ## 現在の状態（最終更新: 2026-07-01）
 
-インターバル編 v1.3.0 完了・GitHub Pages 公開済み（指板表示の視認性改善・発音時間延長・後勝ちモノフォニック再生・タイマー加算漏れ修正に加え、ホーム画面から🏆ボタンでランキング単独閲覧できる機能を追加）。
-コードトーン編は v1.1 予定。
+インターバル編 v1.3.1 完了・GitHub Pages 公開済み（指板表示の視認性改善・発音時間延長・後勝ちモノフォニック再生・タイマー加算漏れ修正・ランキング単独閲覧機能に加え、コードトーン編の予定バージョン表記の矛盾を修正）。
+コードトーン編は v1.5 予定・未着手。
 
 - **公開URL**: `https://monsieurnoir.github.io/guitar-fretboard-app/`
 - **ガイドページ**: `https://monsieurnoir.github.io/guitar-fretboard-app/guide.html`
