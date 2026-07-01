@@ -19,6 +19,7 @@ const COLOR = {
   wrong:       '#f44336',
   root:        '#ff9800',
   tapHint:     'rgba(255,255,255,0.12)',
+  hint:        'rgba(255,255,255,0.7)',
 };
 
 export class Fretboard {
@@ -33,6 +34,11 @@ export class Fretboard {
     this._displayRange  = { start: 0, end: 5 };
     this._maskStrings   = new Set();   // 半透明マスクを掛ける弦インデックス集合
     this._rootInfo      = null;        // { stringIdx, fret } ルート音表示用
+
+    // ヒント（詰まった時にフェードイン表示する候補ポジション）
+    this._hintPositions = [];
+    this._hintAlpha     = 0;
+    this._hintRAF       = null;
 
     this._bindEvents();
   }
@@ -67,6 +73,29 @@ export class Fretboard {
 
   clearConfirmedRoot() {
     this._confirmedRoot = null;
+    this._render();
+  }
+
+  // ヒント表示（フェードイン）。positions: [{ stringIdx, fret }, ...]
+  showHints(positions) {
+    cancelAnimationFrame(this._hintRAF);
+    this._hintPositions = positions;
+    this._hintAlpha     = 0;
+    const DURATION = 400;
+    const start = performance.now();
+    const step = () => {
+      this._hintAlpha = Math.min(1, (performance.now() - start) / DURATION);
+      this._render();
+      this._hintRAF = this._hintAlpha < 1 ? requestAnimationFrame(step) : null;
+    };
+    this._hintRAF = requestAnimationFrame(step);
+  }
+
+  clearHints() {
+    cancelAnimationFrame(this._hintRAF);
+    this._hintRAF       = null;
+    this._hintPositions = [];
+    this._hintAlpha     = 0;
     this._render();
   }
 
@@ -220,6 +249,13 @@ export class Fretboard {
       this._drawCircle(ctx, layout, rs, rf, COLOR.root);
     }
 
+    // 詰まった時のヒント（候補ポジションにフェードインする半透明ドット）
+    if (this._hintPositions.length > 0) {
+      for (const { stringIdx, fret } of this._hintPositions) {
+        this._drawCircle(ctx, layout, stringIdx, fret, COLOR.hint, 0.2, this._hintAlpha);
+      }
+    }
+
     // ユーザーが正解タップしたルート音マーカー（オレンジ）
     if (this._confirmedRoot) {
       const { stringIdx, fret } = this._confirmedRoot;
@@ -234,19 +270,22 @@ export class Fretboard {
     }
   }
 
-  _drawCircle(ctx, layout, stringIdx, fret, color) {
+  _drawCircle(ctx, layout, stringIdx, fret, color, radiusScale = 0.32, alpha = 1) {
     const { fretX, strY, fretStep, strStep, PAD_LEFT, OPEN_ZONE } = layout;
     // fret=0（開放弦）は開放弦ゾーンの中央に描画
     const x = (fret === 0 && OPEN_ZONE > 0)
       ? PAD_LEFT - OPEN_ZONE / 2
       : fretX(fret) - fretStep / 2;
     const y = strY(stringIdx);
-    const r = Math.min(fretStep, strStep) * 0.32;
+    const r = Math.min(fretStep, strStep) * radiusScale;
 
+    ctx.save();
+    ctx.globalAlpha = alpha;
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = color;
     ctx.fill();
+    ctx.restore();
   }
 
   // ── イベント ──────────────────────────────────────────────

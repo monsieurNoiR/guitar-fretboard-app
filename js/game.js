@@ -10,13 +10,18 @@ import {
 
 const QUESTIONS_PER_SET = 10;
 
+// 詰まった時のヒント表示までの待ち時間（5〜7秒でランダム化）
+const HINT_DELAY_MIN = 5000;
+const HINT_DELAY_MAX = 7000;
+
 export class Game {
-  constructor({ level, audio, fretboard, excludeOpenStrings = false,
+  constructor({ level, audio, fretboard, excludeOpenStrings = false, hintEnabled = true,
                 onQuestion, onCorrect, onWrong, onComplete }) {
     this._level              = level;
     this._audio              = audio;
     this._fb                 = fretboard;
     this._excludeOpenStrings = excludeOpenStrings;
+    this._hintEnabled        = hintEnabled;
     this._onQ                = onQuestion;
     this._onCorrect          = onCorrect;
     this._onWrong            = onWrong;
@@ -30,7 +35,9 @@ export class Game {
     this._totalTime = 0;   // 回答中の累計時間（タイマーは回答中のみ動作）
     this._playTimer         = null; // _playQuestion の 700ms 遅延タイマー
     this._nextQuestionTimer = null;
-    this._currentQ  = null;
+    this._hintTimer  = null;
+    this._currentQ   = null;
+    this._currentRange = null;
     this._answered  = false;
     this._phase     = 'root'; // 'root' | 'interval'
     this._isPractice = (level.id === 'practice');
@@ -71,7 +78,9 @@ export class Game {
         // ルート正解: オレンジ確定マーカーを置いて度数フェーズへ
         this._fb.setConfirmedRoot(stringIdx, fret);
         this._fb.clearFeedback();
+        this._fb.clearHints();
         this._phase = 'interval';
+        this._scheduleHint();
         this._onQ?.({
           qNum:         this._isPractice ? null : this._qIndex + 1,
           total:        this._isPractice ? null : QUESTIONS_PER_SET,
@@ -88,11 +97,13 @@ export class Game {
       this._fb.showFeedback(stringIdx, fret, hit);
       if (hit) {
         this._stopTimer();
+        clearTimeout(this._hintTimer);
+        this._fb.clearHints();
         this._answered = true;
         this._correct++;
         this._onCorrect?.({ score: this._correct, total: this._qIndex + 1 });
         if (this._isPractice) {
-          this._nextQuestionTimer = setTimeout(() => this._nextQuestion(), 800);
+          this._nextQuestionTimer = setTimeout(() => this._nextQuestion(), 500);
         } else {
           this._nextQuestionTimer = setTimeout(() => {
             this._qIndex++;
@@ -119,6 +130,8 @@ export class Game {
     this._stopTimer();
     clearTimeout(this._playTimer);
     clearTimeout(this._nextQuestionTimer);
+    clearTimeout(this._hintTimer);
+    this._fb.clearHints();
   }
 
   // ── 内部メソッド ──────────────────────────────────────────
@@ -126,6 +139,8 @@ export class Game {
   _nextQuestion() {
     this._fb.clearFeedback();
     this._fb.clearConfirmedRoot();
+    clearTimeout(this._hintTimer);
+    this._fb.clearHints();
     this._phase    = 'root';
     this._answered = false;
 
@@ -149,6 +164,7 @@ export class Game {
 
     // 表示範囲を更新
     const range = calcDisplayRange(rootFret);
+    this._currentRange = range;
     const maskStrings = this._buildMask(this._level.judgeStrings);
     this._fb.draw({ displayRange: range, maskStrings });
 
@@ -167,12 +183,53 @@ export class Game {
 
   _playQuestion(q) {
     clearTimeout(this._playTimer);
+    clearTimeout(this._hintTimer);
+    this._fb.clearHints();
     this._audio.playNote(q.rootMidi, 0.8);
     this._playTimer = setTimeout(() => {
       const targetMidi = q.rootMidi + q.semitones;
       this._audio.playNote(targetMidi, 1.0);
       if (!this._isPractice) this._startTimer();
+      this._scheduleHint();
     }, 800);
+  }
+
+  // 詰まった時のヒント表示をスケジュール（LV.Max除く、設定でOFFも可）
+  // フェーズ1: 出題音再生完了直後から。フェーズ2: Rootタップ確定直後から。
+  // スケジュール時点のフェーズを覚えておき、発火時にフェーズが変わっていたら無視する
+  // （「もう一度」で音を聞き直した際に度数フェーズ用ヒントとして誤発火しないように）
+  _scheduleHint() {
+    clearTimeout(this._hintTimer);
+    if (!this._hintEnabled || this._level.id === 'lvmax') return;
+    const phaseAtSchedule = this._phase;
+    const delay = HINT_DELAY_MIN + Math.random() * (HINT_DELAY_MAX - HINT_DELAY_MIN);
+    this._hintTimer = setTimeout(() => {
+      if (this._answered || this._phase !== phaseAtSchedule) return;
+      this._showHint(phaseAtSchedule);
+    }, delay);
+  }
+
+  _showHint(phase) {
+    const q = this._currentQ;
+    if (!q) return;
+    const pc = phase === 'root' ? q.rootPc : q.targetPc;
+    this._fb.showHints(this._hintPositionsForPc(pc));
+  }
+
+  // 表示窓内・判定対象弦の中で pc に一致する全ポジションを返す
+  _hintPositionsForPc(pc) {
+    const { start, end } = this._currentRange;
+    const positions = [];
+    for (const s of this._level.judgeStrings) {
+      if (start === 0 && !this._excludeOpenStrings && getPitchClass(s, 0) === pc) {
+        positions.push({ stringIdx: s, fret: 0 });
+      }
+      for (let f = start + 1; f <= end + 1; f++) {
+        if (f > MAX_FRET) break;
+        if (getPitchClass(s, f) === pc) positions.push({ stringIdx: s, fret: f });
+      }
+    }
+    return positions;
   }
 
   // 「もう一度」で再生し直すと _playQuestion 経由で再度呼ばれるため、

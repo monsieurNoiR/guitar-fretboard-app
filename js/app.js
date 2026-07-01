@@ -7,6 +7,7 @@ import { Game }         from './game.js';
 let currentGame         = null;
 let currentLevel        = null;
 let excludeOpenStrings  = false;
+let hintEnabled         = true;
 const audio             = new AudioEngine();
 
 // ── DOM参照 ───────────────────────────────────────────────
@@ -82,6 +83,9 @@ function startGame(level) {
   currentLevel = level;
   currentGame?.stop();
 
+  // ハンバーガーメニューを開いたままLVを選ぶと画面が隠れるため、ゲーム開始前に閉じる
+  menuPanel.classList.remove('open');
+
   // 先に表示してからレイアウト確定を待つ（display:none 中は clientWidth/Height が 0）
   showScreen('screen-game');
 
@@ -96,6 +100,7 @@ function startGame(level) {
       audio,
       fretboard,
       excludeOpenStrings,
+      hintEnabled,
       onQuestion({ qNum, total, intervalName, rootName, phase }) {
         if (phase === 'root') {
           // ルートフェーズ: ノート名を大きく、ガイドを小さく
@@ -267,6 +272,14 @@ btnOpenString.addEventListener('click', () => {
   excludeOpenStrings = !excludeOpenStrings;
   btnOpenString.dataset.excluded = String(excludeOpenStrings);
   btnOpenString.textContent = excludeOpenStrings ? '除外' : '含む';
+});
+
+// ヒント表示トグル（デフォルトON。LV.Maxでは常に無効）
+const btnHint = document.getElementById('btn-hint');
+btnHint.addEventListener('click', () => {
+  hintEnabled = !hintEnabled;
+  btnHint.dataset.enabled = String(hintEnabled);
+  btnHint.textContent = hintEnabled ? 'ON' : 'OFF';
 });
 
 // ── 縦持ちオーバーレイ ──────────────────────────────────────
