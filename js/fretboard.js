@@ -17,6 +17,7 @@ const COLOR = {
   activeStr:   'rgba(232,150,58,0.08)',
   correct:     '#4caf50',
   wrong:       '#f44336',
+  neutral:     '#64b5f6',
   root:        '#ff9800',
   tapHint:     'rgba(255,255,255,0.12)',
   hint:        'rgba(255,255,255,0.5)',
@@ -27,7 +28,7 @@ export class Fretboard {
     this._canvas  = canvas;
     this._ctx     = canvas.getContext('2d');
     this._tapCb        = null;
-    this._feedback     = null; // { stringIdx, fret, isCorrect }
+    this._feedback     = null; // { stringIdx, fret, isCorrect } isCorrect: true=正解 / false=不正解 / 'neutral'=既にクリア済み
     this._confirmedRoot = null; // ユーザーが正解タップしたルート音位置
 
     // 現在の表示状態
@@ -265,8 +266,10 @@ export class Fretboard {
     // タップフィードバック（正誤・最前面）
     if (this._feedback) {
       const { stringIdx, fret, isCorrect } = this._feedback;
-      this._drawCircle(ctx, layout, stringIdx, fret,
-        isCorrect ? COLOR.correct : COLOR.wrong);
+      const color = isCorrect === 'neutral'
+        ? COLOR.neutral
+        : (isCorrect ? COLOR.correct : COLOR.wrong);
+      this._drawCircle(ctx, layout, stringIdx, fret, color);
     }
   }
 

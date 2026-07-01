@@ -93,6 +93,7 @@ function startGame(level) {
   // 先に表示してからレイアウト確定を待つ（display:none 中は clientWidth/Height が 0）
   showScreen('screen-game');
 
+  elTimer.classList.remove('hidden');
   elTimer.textContent = '0.0';
   elQNum.textContent  = level.id === 'practice' ? '練習' : '1 / 10';
 
@@ -136,8 +137,9 @@ function startChordPractice() {
   menuPanel.classList.remove('open');
   showScreen('screen-game');
 
-  elTimer.textContent = '0.0';
-  elQNum.textContent  = '練習';
+  // Stage 0 はタイマーなし仕様のため、フッターのストップウォッチ表示は隠す
+  elTimer.classList.add('hidden');
+  elQNum.textContent = '練習';
 
   requestAnimationFrame(() => {
     fretboard.resize();
@@ -152,7 +154,6 @@ function startChordPractice() {
     });
 
     currentGame.start();
-    startTimerDisplay();
   });
 }
 

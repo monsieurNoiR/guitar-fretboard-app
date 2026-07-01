@@ -68,14 +68,18 @@ server.js       Node.js HTTPSサーバー（開発用）
 - **出題**: ルート C 固定・低音3弦（6〜4弦）固定・メジャー/マイナートライアドのみ（`CHORD_TYPES.maj` / `.min`）
 - **判定ロジック（未クリア集合方式）**: コード開始時に構成音のピッチクラス集合を持ち、順不同でタップして見つけた度数を集合から消す。集合が空になったら次のコードへ自動遷移（`NEXT_CHORD_DELAY = 800ms`）。フェーズ管理（Root→度数のような順序制約）はしない
 - **進捗表示**: `root-name` 要素に常時テキストで表示（例:「R ✓　m3 ✓　5th（未）」）。既存の `interval-name` 要素にはコード名（例:「C Minor」）を表示。ヒント機能や表示の補助ON/OFFは対象外
-- **ポリフォニック再生**: `AudioEngine.playChord(midis, duration)` で複数 `OscillatorNode` を同時発音。既存の単音再生 `playNote()`（`_activeVoice` で後勝ちカット）とは別管理（`_chordVoices`）にし、互いに干渉しない
+- **ポリフォニック再生**: `AudioEngine.playChord(midis, duration)` で複数 `OscillatorNode` を同時発音。既存の単音再生 `playNote()`（`_activeVoice` で後勝ちカット）とは別管理（`_chordVoices`）にし、互いに干渉しない。`AudioEngine.stopChord()` で再生中のコードを即座にフェードアウト（`ChordGame.stop()` から呼ばれ、ホームボタン離脱時に音を止める）
+- **モード離脱時のクリーンアップ**: `ChordGame._nextChord()` の先頭で `fretboard.clearConfirmedRoot()` を呼び、インターバル編でRootタップ後に離脱した際のオレンジマーカー残留を防止
+- **タップフィードバックの3値表現**: `Fretboard.showFeedback(stringIdx, fret, state)` の `state` は `true`（正解）/ `false`（不正解）/ `'neutral'`（構成音だが既にクリア済みの度数を別ポジションで再タップ、`COLOR.neutral` の青系で表示）。インターバル編（Gameクラス）は従来通り真偽値のみ渡す
+- **フッタータイマー非表示**: Stage 0はタイマーなし仕様のため、`app.js` の `startChordPractice()` は `elTimer` に `hidden` クラスを付与し `startTimerDisplay()` を呼ばない（`startGame()` 側で `hidden` を解除しているため、インターバル編に戻れば再表示される）
+- **既知の制約（Stage 1で必ず対応）**: `Game._hasValidAnswer` に相当する出題可解性検証を `ChordGame` は持たない。現状（ルートC固定・低音3弦・maj/minのみ）は手計算上すべて可解だが、ルートやコードタイプを増やすと表示窓内に構成音が収まらず「詰み」が発生し得る
 - 将来のStage 1以降で7th/テンション・出題度数の部分集合・対象弦の可変設定・出題順序制約（順序固定⇄順不同を段階的に混ぜる案）を追加予定
 
 ## 現在の状態（最終更新: 2026-07-01）
 
 インターバル編 v1.4.3 完了・GitHub Pages 公開済み（従来の改善に加え、ハンバーガーメニュー表示バグの修正、詰まった時のヒント表示機能（LV.Max除く、ON/OFF切替可）を追加。ヒントドットは実機確認とフィードバックを経て半径 0.2→0.8→0.32、不透明度 0.7→0.5 に調整済み）。
 
-コードトーン編 v1.5 Stage 0 実装済み（ローカル確認済み、未デプロイ）。ルートC固定・低音3弦・メジャー/マイナートライアドのみの練習モード。未クリア集合方式の判定ロジック、`AudioEngine.playChord()` によるポリフォニック再生を新規実装。詳細仕様は上記「コードトーン編 Stage 0」セクション参照。Stage 1以降（7th・テンション・出題度数の部分集合・対象弦の可変設定・出題順序制約）は未着手。
+コードトーン編 v1.5 Stage 0 実装・GitHub Pages 公開済み。ルートC固定・低音3弦・メジャー/マイナートライアドのみの練習モード。未クリア集合方式の判定ロジック、`AudioEngine.playChord()` によるポリフォニック再生を実装。v1.5.1でコードレビュー指摘の4点（`_confirmedRoot`残留・コード再生の即カット・タイマー非表示・再クリア済み度数の中立色表示）を修正済み。詳細仕様は上記「コードトーン編 Stage 0」セクション参照。Stage 1以降（7th・テンション・出題度数の部分集合・対象弦の可変設定・出題順序制約・出題可解性検証）は未着手。
 
 - **公開URL**: `https://monsieurnoir.github.io/guitar-fretboard-app/`
 - **ガイドページ**: `https://monsieurnoir.github.io/guitar-fretboard-app/guide.html`

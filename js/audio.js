@@ -77,6 +77,14 @@ export class AudioEngine {
     this._chordVoices = midis.map(midi => this._createVoice(midi, duration, now));
   }
 
+  // 再生中のコードを即座にフェードアウトして止める（画面離脱時など）
+  stopChord() {
+    if (!this._chordVoices || !this._ctx) return;
+    const now = this._ctx.currentTime;
+    this._chordVoices.forEach(v => this._fadeOutVoice(v, now));
+    this._chordVoices = null;
+  }
+
   // アルペジオ: 順次再生
   playArpeggio(midis, interval = 80) {
     midis.forEach((midi, i) => {

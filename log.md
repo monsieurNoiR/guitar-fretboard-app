@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.5.1 — 2026-07-01
+
+### コードトーン編 Stage 0 のコードレビュー指摘を修正
+コードレビュー（`CODE_REVIEW_2026-07-01_chordgame-stage0.md`）で指摘された4点に対応。
+
+- **`_confirmedRoot` のモード間リークを修正**: インターバル編でRootを正解タップした後、度数を答える前にホームボタンで離脱してコードトーン編を開始すると、オレンジのルート確定マーカーが指板上に残留するバグを修正。`ChordGame._nextChord()` の先頭で `fretboard.clearConfirmedRoot()` を呼ぶよう追加
+- **`stop()` でコード再生中の音を即カット**: `AudioEngine` に `stopChord()`（`_chordVoices` をフェードアウトして null 化）を追加し、`ChordGame.stop()` から呼ぶことで、ホームボタン離脱時にコード音（最大約1.2秒）が鳴り続ける問題を解消
+- **フッタータイマー表示を仕様（タイマーなし）に合わせて非表示化**: `app.js` の `startChordPractice()` で `elTimer` に `hidden` クラスを付与し `startTimerDisplay()` の呼び出しを削除。インターバル編開始時（`startGame()`）は `hidden` を解除して従来通り表示
+- **クリア済み構成音の再タップを中立色でフィードバック**: 既に消し込んだ度数を別ポジションで再タップした際、緑（正解）ではなく中立色（`COLOR.neutral` の青系）で表示するよう修正。`Fretboard.showFeedback()` の第3引数に `'neutral'` 状態を追加（`true`/`false` の既存呼び出し元＝インターバル編には影響なし）
+- 上記4点はローカルサーバーでの実機ブラウザ確認済み。あわせて既存インターバル編（LV.1の複数問プレイ・タイマー動作・正誤フィードバック）への影響なしも確認
+- **Stage 1への申し送り（今回未対応）**: `ChordGame` には出題可解性の検証（`Game._hasValidAnswer` 相当）がない。現状（ルートC固定・低音3弦・maj/minのみ）は手計算上すべて可解だが、ルートやコードタイプを増やすと表示窓内に構成音が収まらない「詰み」が発生し得るため、Stage 1着手時に必ず対応すること
+- `sw.js` を `fretboard-v11` に更新（`js/chordGame.js` / `js/audio.js` / `js/app.js` / `js/fretboard.js` の内容変更をキャッシュに反映）
+
+---
+
 ## v1.5.0 — 2026-07-01
 
 ### コードトーン編 Stage 0 を新規実装

@@ -46,6 +46,7 @@ export class ChordGame {
 
   stop() {
     clearTimeout(this._nextTimer);
+    this._audio.stopChord();
   }
 
   handleTap({ stringIdx, fret }) {
@@ -58,10 +59,13 @@ export class ChordGame {
     // タップ位置の音を常に再生（正誤問わず）
     this._audio.playNote(midi, 0.7);
 
-    const isChordTone = this._chordTones.some(t => isChordToneHit(t.pc, pc));
-    this._fb.showFeedback(stringIdx, fret, isChordTone);
+    const isChordTone   = this._chordTones.some(t => isChordToneHit(t.pc, pc));
+    const isNewlyFound  = isChordTone && this._remaining.has(pc);
+    // 構成音だが既にクリア済み（別ポジションで再タップ）の場合は正解でも不正解でもない中立表示
+    const feedbackState = !isChordTone ? false : (isNewlyFound ? true : 'neutral');
+    this._fb.showFeedback(stringIdx, fret, feedbackState);
 
-    if (isChordTone && this._remaining.has(pc)) {
+    if (isNewlyFound) {
       this._remaining.delete(pc);
       this._emitProgress();
       if (this._remaining.size === 0) {
@@ -75,6 +79,8 @@ export class ChordGame {
   _nextChord() {
     clearTimeout(this._nextTimer);
     this._fb.clearFeedback();
+    // インターバル編からの遷移でオレンジのルート確定マーカーが残留しないようにクリア
+    this._fb.clearConfirmedRoot();
 
     const typeId = CHORD_TYPE_IDS[Math.floor(Math.random() * CHORD_TYPE_IDS.length)];
     const type   = CHORD_TYPES[typeId];
