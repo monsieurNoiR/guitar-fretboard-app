@@ -175,7 +175,13 @@ export class Game {
     }, 800);
   }
 
+  // 「もう一度」で再生し直すと _playQuestion 経由で再度呼ばれるため、
+  // 前回の開始時刻からの経過分を _totalTime に加算してから計り直す
+  // （加算しないと聞き直すたびに経過時間が消えてしまう）
   _startTimer() {
+    if (this._qStartTime !== null) {
+      this._totalTime += (performance.now() - this._qStartTime) / 1000;
+    }
     this._qStartTime = performance.now();
   }
 

@@ -64,7 +64,7 @@ server.js       Node.js HTTPSサーバー（開発用）
 
 ## 現在の状態（最終更新: 2026-07-01）
 
-インターバル編 v1.2.2 完了・GitHub Pages 公開済み（指板表示の視認性改善に加え、発音時間の延長・後勝ちモノフォニック再生を実装）。
+インターバル編 v1.2.3 完了・GitHub Pages 公開済み（指板表示の視認性改善・発音時間延長・後勝ちモノフォニック再生に加え、タイマー加算漏れ修正と guide.html の記述整合を実施）。
 コードトーン編は v1.1 予定。
 
 - **公開URL**: `https://monsieurnoir.github.io/guitar-fretboard-app/`
@@ -82,3 +82,5 @@ server.js       Node.js HTTPSサーバー（開発用）
 - AudioContext は iOS では最初のユーザー操作（タップ）後でないと音が出ない。`AudioEngine.playNote()` 内で `state === 'suspended'` 時に `resume()` している
 - `calcDisplayRange` が返す `end` の意味は「最後のフレット線位置」であり、表示されるゾーンは `end+1` まで。`end` の上限は `MAX_FRET - 1 = 16`（ゾーン最大 = 17F）
 - localStorage の `setItem`/`JSON.parse` は iOS Safari プライベートブラウズで例外を投げる。`loadScores()` / `saveScore()` で try/catch 済み
+- **画面表示のタイマーとスコア用タイマーは別物**: `app.js` の `elTimer`（フッター表示）は `Game.start()` 直後に始動し、ゲーム画面を出るまで一度も止まらない単純な経過時間。一方 `Game._totalTime`（リザルト・ランキングに保存される値）は出題音再生後から正解までを問題ごとに積算した別のカウント。両者は数値が一致しないので、タイマー周りを触るときはどちらの値を変更しているか要確認
+- `Game._startTimer()` は呼ばれるたびに `_qStartTime` を上書きするのではなく、前回開始時刻からの経過分を `_totalTime` に加算してから計り直す実装にしている（「もう一度」ボタンで `_playQuestion` 経由で再度呼ばれるため、加算しないと聞き直すたびにタイムが消えるバグになる）
