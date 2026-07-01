@@ -90,6 +90,12 @@ server.js       Node.js HTTPSサーバー（開発用）
 - key.pem / cert.pem は .gitignore 済み
 - main ブランチへのプッシュで自動デプロイ
 
+## バージョン表示
+
+- `index.html` のハンバーガーメニュー最下部（`.app-version`、使い方ガイドリンクの下）にバージョン番号を表示している（例:「v1.5.1」）
+- **バージョンを上げるたびに、この表示を必ず更新すること**（`log.md` に新しいバージョンのエントリを追加するタイミングと合わせる）
+- 表示内容を変更した場合は `sw.js` のキャッシュバージョンも忘れずに更新する
+
 ## 注意点
 
 - Canvas は `clientWidth/Height * devicePixelRatio` でサイズ設定。`fretboard.resize()` は `showScreen('screen-game')` の後、かつ `requestAnimationFrame` コールバック内で呼ぶこと（`display:none` 中は `clientWidth/Height` が 0 になるため）

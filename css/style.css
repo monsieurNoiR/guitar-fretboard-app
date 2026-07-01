@@ -417,6 +417,12 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
 }
 .menu-link:hover { text-decoration: underline; }
 
+.app-version {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ═══════════════════════════════════════════════════════════
    縦持ちオーバーレイ（横向きを促す全画面表示）
 ════════════════════════════════════════════════════════════ */
