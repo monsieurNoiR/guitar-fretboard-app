@@ -29,6 +29,7 @@ const canvas       = document.getElementById('fretboard-canvas');
 
 // ── リザルト画面 ──
 const screenResult = document.getElementById('screen-result');
+const elResTitle   = document.getElementById('result-title');
 const elResScore   = document.getElementById('res-score');
 const elResTime    = document.getElementById('res-time');
 const elRanking    = document.getElementById('ranking-list');
@@ -55,12 +56,24 @@ function showScreen(id) {
 function buildLvList() {
   lvList.replaceChildren();
   INTERVAL_LEVELS.forEach(lv => {
+    const row = document.createElement('li');
+    row.className = 'lv-row';
+
     const btn = document.createElement('button');
     btn.className   = 'lv-btn';
     btn.textContent = lv.label;
     btn.dataset.lvId = lv.id;
     btn.addEventListener('click', () => startGame(lv));
-    lvList.appendChild(btn);
+
+    const rankBtn = document.createElement('button');
+    rankBtn.className   = 'lv-rank-btn';
+    rankBtn.textContent  = '\u{1F3C6}';
+    rankBtn.setAttribute('aria-label', `${lv.label} のランキングを見る`);
+    rankBtn.addEventListener('click', () => showRanking(lv));
+
+    row.appendChild(btn);
+    row.appendChild(rankBtn);
+    lvList.appendChild(row);
   });
 }
 
@@ -127,6 +140,12 @@ function stopTimerDisplay() {
 function showResult(results) {
   stopTimerDisplay();
   const { correct, total, totalTime, levelId } = results;
+
+  elResTitle.textContent = '結果';
+  elResScore.classList.remove('hidden');
+  elResTime.classList.remove('hidden');
+  btnRetry.textContent = 'もう一度';
+
   elResScore.textContent = `${correct} / ${total} 正解`;
   elResTime.textContent  = `タイム: ${totalTime.toFixed(1)}秒`;
 
@@ -137,6 +156,19 @@ function showResult(results) {
     elRanking.replaceChildren();
   }
 
+  showScreen('screen-result');
+}
+
+// ── ランキングのみ表示（プレイせずホームから閲覧）─────────────
+function showRanking(level) {
+  currentLevel = level;
+
+  elResTitle.textContent = 'ランキング';
+  elResScore.classList.add('hidden');
+  elResTime.classList.add('hidden');
+  btnRetry.textContent = 'プレイする';
+
+  renderRanking(level.id);
   showScreen('screen-result');
 }
 

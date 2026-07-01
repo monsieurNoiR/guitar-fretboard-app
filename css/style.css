@@ -139,7 +139,13 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
   gap: 8px;
 }
 
+.lv-row {
+  display: flex;
+  gap: 8px;
+}
+
 .lv-btn {
+  flex: 1;
   width: 100%;
   padding: 14px 16px;
   border-radius: var(--radius);
@@ -150,6 +156,18 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
   transition: background 0.1s;
 }
 .lv-btn:active { background: var(--surface2); }
+
+.lv-rank-btn {
+  flex-shrink: 0;
+  width: 48px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 1.15rem;
+  color: var(--text-dim);
+  transition: background 0.1s;
+}
+.lv-rank-btn:active { background: var(--surface2); }
 
 .lv-practice {
   margin-top: 4px;
