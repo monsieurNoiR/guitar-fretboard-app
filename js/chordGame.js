@@ -2,18 +2,22 @@ import {
   getPitchClass, getMidi,
   isChordToneHit,
   calcDisplayRange,
+  hasSolvableChordTones,
   INTERVAL_NAMES,
   CHORD_TYPES,
   noteName,
   STRING_COUNT,
 } from './music.js';
 
-// Stage 0: ルート固定C・低音3弦・メジャー/マイナートライアドのみ
-const CHORD_TYPE_IDS = ['maj', 'min'];
+// Stage 1: ルート固定C・低音3弦・トライアド〜7th系10種類
+const CHORD_TYPE_IDS = ['maj', 'min', 'maj7', 'min7', 'dom7', 'dim7', 'm7b5', 'aug', 'sus2', 'sus4'];
 const ROOT_PC     = 0;          // C
 const ROOT_STRING = 0;          // 6弦
 const ROOT_FRET   = 8;          // 6弦8F = C
 const JUDGE_STRINGS = [0, 1, 2]; // 低音3弦（6〜4弦）
+
+// 出題可解性チェックのリトライ上限（Game._hasValidAnswerと同じパターン）
+const MAX_TYPE_RETRY = 30;
 
 // クリア後、次のコードへ進むまでの待ち時間
 const NEXT_CHORD_DELAY = 800;
@@ -82,8 +86,12 @@ export class ChordGame {
     // インターバル編からの遷移でオレンジのルート確定マーカーが残留しないようにクリア
     this._fb.clearConfirmedRoot();
 
-    const typeId = CHORD_TYPE_IDS[Math.floor(Math.random() * CHORD_TYPE_IDS.length)];
-    const type   = CHORD_TYPES[typeId];
+    let typeId, type;
+    for (let attempt = 0; attempt < MAX_TYPE_RETRY; attempt++) {
+      typeId = CHORD_TYPE_IDS[Math.floor(Math.random() * CHORD_TYPE_IDS.length)];
+      type   = CHORD_TYPES[typeId];
+      if (hasSolvableChordTones(ROOT_PC, ROOT_FRET, JUDGE_STRINGS, type.chord)) break;
+    }
 
     this._chordTones = type.chord.map(semitone => ({
       semitone,

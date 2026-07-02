@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.6.0 — 2026-07-02
+
+### コードトーン編 Stage 1: コードタイプを7th系まで拡張
+- **出題コードタイプを2種類→10種類に拡張**: メジャー/マイナートライアドに加え、Major 7th・Minor 7th・Dominant 7th・Diminished 7・Half Diminished（m7b5）・Augmented・Sus2・Sus4 を追加（`js/chordGame.js` の `CHORD_TYPE_IDS`）。ルート音の可変化は対象外（Cのまま据え置き）、テンション（9th/11th等）も対象外
+- **出題可解性チェックを追加**: `js/music.js` に `hasSolvableChordTones(rootPc, rootFret, judgeStrings, semitones)` を新設。ルート×コードタイプの組み合わせ単位で、低音3弦・6フレット窓に全構成音が収まるか判定する。`ChordGame._nextChord()` のタイプ抽選を `Game._hasValidAnswer` と同型の再試行パターン（最大30回）に変更し、Stage 0で申し送りだった「出題可解性検証の欠如」を解消
+- **可解性の事前検証**: 実装前にNode上で実際の `music.js` をインポートし、`CHORD_TYPES` 全10種類が低音3弦・6フレット窓・ルートC固定の条件下で機械的に可解であることを確認済み（「詰み」になる組み合わせは0件）。テンションは9th/b9のみ窓内到達可能で11th以上は物理的に到達不可能と判明したため、今回は対象から除外
+- `js/audio.js` の `_chordVoices`（ポリフォニック再生）は既に可変長配列に対応済みと確認、修正不要
+- `index.html` のホーム画面説明文・ハンバーガーメニューのバージョン表示、`guide.html` のコードトーン編セクション、`README.md` を更新
+- `sw.js` を `fretboard-v14` に更新
+
+---
+
 ## v1.5.3 — 2026-07-01
 
 ### ハンバーガーメニューが画面高さに収まらない問題を修正

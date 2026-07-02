@@ -19,7 +19,7 @@ iPad から `https://192.168.1.7:3443` でアクセス（IPアドレスは環境
 - **ゲームロジック**: `game.js`（問題生成・判定・2タップフロー・タイマー）
 - **音楽理論**: `music.js`（ピッチクラス計算・コード定義・LV設定）
 - **スコア保存**: localStorage（モード×LVごと、タイムランキング上位20件）
-- **PWA**: Service Worker キャッシュファースト（`fretboard-v9`）、manifest.json（orientation: landscape）
+- **PWA**: Service Worker キャッシュファースト（`fretboard-v14`）、manifest.json（orientation: landscape）
 
 ## ファイル構成
 
@@ -30,11 +30,11 @@ js/
   fretboard.js  Canvas指板描画・タップ判定（Fretboardクラス）
   audio.js      Web Audio API音再生（AudioEngineクラス。単音playNote/コードpolyphonic再生playChord）
   game.js       インターバル編ゲームロジック・問題生成・判定（Gameクラス）
-  chordGame.js  コードトーン編ゲームロジック（ChordGameクラス、Stage 0）
+  chordGame.js  コードトーン編ゲームロジック（ChordGameクラス、Stage 1）
 css/style.css
 index.html      3画面（ホーム/ゲーム/リザルト）+ ハンバーガーメニュー
 guide.html      初めて触る人向け説明ページ（スタンドアロン）
-sw.js           Service Worker（fretboard-v10）
+sw.js           Service Worker（fretboard-v14）
 manifest.json   PWA設定（orientation: landscape）
 server.js       Node.js HTTPSサーバー（開発用）
 ```
@@ -63,23 +63,24 @@ server.js       Node.js HTTPSサーバー（開発用）
 ### 出題バリデーション
 `_hasValidAnswer(rootPc, rootMidi, semitones, rootFret)` が `calcDisplayRange(rootFret)` の表示窓内に正解ポジションが存在するかチェック。失敗時は最大 30 回リトライ。
 
-### コードトーン編 Stage 0（`js/chordGame.js`）
+### コードトーン編 Stage 1（`js/chordGame.js`）
 - **モード**: 練習のみ（タイマーなし、無限ループ）。10問セット・ランキングは対象外
-- **出題**: ルート C 固定・低音3弦（6〜4弦）固定・メジャー/マイナートライアドのみ（`CHORD_TYPES.maj` / `.min`）
+- **出題**: ルート C 固定・低音3弦（6〜4弦）固定・`CHORD_TYPE_IDS` の全10種類（maj, min, maj7, min7, dom7, dim7, m7b5, aug, sus2, sus4）からランダム抽選。テンション（9th/11th等）は出題対象外
+- **出題可解性チェック**: `music.js` の `hasSolvableChordTones(rootPc, rootFret, judgeStrings, semitones)` が、ルート×コードタイプの組み合わせ単位で `calcDisplayRange(rootFret)` の表示窓・判定弦内に全構成音が存在するかチェック。`ChordGame._nextChord()` のタイプ抽選は `Game._hasValidAnswer` と同型の再試行パターン（失敗時に最大30回リトライ）。実装前にNode上で機械的に検証済みで、現行の全10種類はいずれも可解（「詰み」になる組み合わせは0件）
 - **判定ロジック（未クリア集合方式）**: コード開始時に構成音のピッチクラス集合を持ち、順不同でタップして見つけた度数を集合から消す。集合が空になったら次のコードへ自動遷移（`NEXT_CHORD_DELAY = 800ms`）。フェーズ管理（Root→度数のような順序制約）はしない
-- **進捗表示**: `root-name` 要素に常時テキストで表示（例:「R ✓　m3 ✓　5th（未）」）。既存の `interval-name` 要素にはコード名（例:「C Minor」）を表示。ヒント機能や表示の補助ON/OFFは対象外
-- **ポリフォニック再生**: `AudioEngine.playChord(midis, duration)` で複数 `OscillatorNode` を同時発音。既存の単音再生 `playNote()`（`_activeVoice` で後勝ちカット）とは別管理（`_chordVoices`）にし、互いに干渉しない。`AudioEngine.stopChord()` で再生中のコードを即座にフェードアウト（`ChordGame.stop()` から呼ばれ、ホームボタン離脱時に音を止める）
+- **進捗表示**: `root-name` 要素に常時テキストで表示（例:「R ✓　3rd ✓　5th ✓　7th（未）」、7th系は4音）。既存の `interval-name` 要素にはコード名（例:「C Minor」）を表示。ヒント機能や表示の補助ON/OFFは対象外
+- **ポリフォニック再生**: `AudioEngine.playChord(midis, duration)` で複数 `OscillatorNode` を同時発音。`_chordVoices` は `midis.map(...)` で可変長対応済み（3音固定ではない）。既存の単音再生 `playNote()`（`_activeVoice` で後勝ちカット）とは別管理にし、互いに干渉しない。`AudioEngine.stopChord()` で再生中のコードを即座にフェードアウト（`ChordGame.stop()` から呼ばれ、ホームボタン離脱時に音を止める）
 - **モード離脱時のクリーンアップ**: `ChordGame._nextChord()` の先頭で `fretboard.clearConfirmedRoot()` を呼び、インターバル編でRootタップ後に離脱した際のオレンジマーカー残留を防止
 - **タップフィードバックの3値表現**: `Fretboard.showFeedback(stringIdx, fret, state)` の `state` は `true`（正解）/ `false`（不正解）/ `'neutral'`（構成音だが既にクリア済みの度数を別ポジションで再タップ、`COLOR.neutral` の青系で表示）。インターバル編（Gameクラス）は従来通り真偽値のみ渡す
-- **フッタータイマー非表示**: Stage 0はタイマーなし仕様のため、`app.js` の `startChordPractice()` は `elTimer` に `hidden` クラスを付与し `startTimerDisplay()` を呼ばない（`startGame()` 側で `hidden` を解除しているため、インターバル編に戻れば再表示される）
-- **既知の制約（Stage 1で必ず対応）**: `Game._hasValidAnswer` に相当する出題可解性検証を `ChordGame` は持たない。現状（ルートC固定・低音3弦・maj/minのみ）は手計算上すべて可解だが、ルートやコードタイプを増やすと表示窓内に構成音が収まらず「詰み」が発生し得る
-- 将来のStage 1以降で7th/テンション・出題度数の部分集合・対象弦の可変設定・出題順序制約（順序固定⇄順不同を段階的に混ぜる案）を追加予定
+- **フッタータイマー非表示**: タイマーなし仕様のため、`app.js` の `startChordPractice()` は `elTimer` に `hidden` クラスを付与し `startTimerDisplay()` を呼ばない（`startGame()` 側で `hidden` を解除しているため、インターバル編に戻れば再表示される）
+- **既知の制約（テンションは低音3弦・6フレット窓では原理的に大半が不可能）**: ルートC・6弦8Fの窓（6F〜12F）内では9th(+14)/b9(+13)のみ到達可能で、11th以上（11th/#11th/13th/b13/#9）はMIDI距離が窓幅を超えるため物理的に到達不可。窓を動的に広げる方式は「実際の運指で無理なく弾ける1ポジション分」というコアコンセプトのため却下済み。テンション出題を扱うにはルート可変化・窓再設計を伴う別ステージでの再検討が必要
+- 将来のステージでテンション・ルート音のランダム化・出題度数の部分集合・対象弦の可変設定・出題順序制約（順序固定⇄順不同を段階的に混ぜる案）を追加予定
 
-## 現在の状態（最終更新: 2026-07-01）
+## 現在の状態（最終更新: 2026-07-02）
 
 インターバル編 v1.4.3 完了・GitHub Pages 公開済み（従来の改善に加え、ハンバーガーメニュー表示バグの修正、詰まった時のヒント表示機能（LV.Max除く、ON/OFF切替可）を追加。ヒントドットは実機確認とフィードバックを経て半径 0.2→0.8→0.32、不透明度 0.7→0.5 に調整済み）。
 
-コードトーン編 v1.5 Stage 0 実装・GitHub Pages 公開済み。ルートC固定・低音3弦・メジャー/マイナートライアドのみの練習モード。未クリア集合方式の判定ロジック、`AudioEngine.playChord()` によるポリフォニック再生を実装。v1.5.1でコードレビュー指摘の4点（`_confirmedRoot`残留・コード再生の即カット・タイマー非表示・再クリア済み度数の中立色表示）を修正済み。詳細仕様は上記「コードトーン編 Stage 0」セクション参照。Stage 1以降（7th・テンション・出題度数の部分集合・対象弦の可変設定・出題順序制約・出題可解性検証）は未着手。
+コードトーン編 v1.6 Stage 1 実装・GitHub Pages 公開予定（実機確認待ち）。コードタイプをメジャー/マイナートライアドから7th系を含む全10種類（maj, min, maj7, min7, dom7, dim7, m7b5, aug, sus2, sus4）に拡張。`music.js` に `hasSolvableChordTones()` を新設し、ルート×コードタイプの組み合わせ単位で出題可解性をチェックする仕組みを追加（Stage 0からの申し送り事項を解消）。実装前にNode上で実際のコードを使い全10種類の可解性を機械的に検証済み（「詰み」なし）。テンションは9th/b9のみ窓内到達可能・11th以上は物理的制約により今回スコープ外。詳細仕様は上記「コードトーン編 Stage 1」セクション参照。ルート音の可変化・テンション出題は将来ステージで再検討。
 
 v1.5.2でハンバーガーメニューにバージョン表示を追加、v1.5.3で同メニューが画面高さに収まらず一部の設定項目が見えなくなる問題を修正（ヘッダー固定＋本体スクロール化）。両編共通のUI改善。
 
@@ -94,7 +95,7 @@ v1.5.2でハンバーガーメニューにバージョン表示を追加、v1.5.
 
 ## バージョン表示
 
-- `index.html` のハンバーガーメニュー最下部（`.app-version`、使い方ガイドリンクの下）にバージョン番号を表示している（例:「v1.5.1」）
+- `index.html` のハンバーガーメニュー最下部（`.app-version`、使い方ガイドリンクの下）にバージョン番号を表示している（例:「v1.6.0」）
 - **バージョンを上げるたびに、この表示を必ず更新すること**（`log.md` に新しいバージョンのエントリを追加するタイミングと合わせる）
 - 表示内容を変更した場合は `sw.js` のキャッシュバージョンも忘れずに更新する
 

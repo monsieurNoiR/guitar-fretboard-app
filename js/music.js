@@ -235,6 +235,22 @@ export function allPositionsForPc(pc) {
   return positions;
 }
 
+// コードトーン編: ルート×コードタイプの組み合わせ単位で、指定の表示窓・判定弦内に
+// 全構成音が見つかるか（＝出題として「詰み」にならないか）を判定する。
+// ルートが可変化しても、同じ関数に新しい組み合わせを渡すだけで再利用できる形にしている。
+export function hasSolvableChordTones(rootPc, rootFret, judgeStrings, semitones) {
+  const { start, end } = calcDisplayRange(rootFret);
+  return semitones.every(semitone => {
+    const targetPc = (rootPc + semitone) % 12;
+    return judgeStrings.some(s => {
+      for (let f = start; f <= end + 1; f++) {
+        if (getPitchClass(s, f) === targetPc) return true;
+      }
+      return false;
+    });
+  });
+}
+
 // コードトーン編で使用予定
 export function allPositionsForTension(rootMidi, semitones) {
   const positions = [];
