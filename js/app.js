@@ -93,6 +93,9 @@ function startGame(level) {
   // 先に表示してからレイアウト確定を待つ（display:none 中は clientWidth/Height が 0）
   showScreen('screen-game');
 
+  // コードトーン編から戻ってきた場合に備え、2行レイアウト用クラスを解除
+  document.body.classList.remove('mode-chord');
+
   elTimer.classList.remove('hidden');
   elTimer.textContent = '0.0';
   elQNum.textContent  = level.id === 'practice' ? '練習' : '1 / 10';
@@ -130,14 +133,17 @@ function startGame(level) {
   });
 }
 
-// ── コードトーン編 練習開始（Stage 0: Root固定C・低音3弦・メジャー/マイナートライアド）──
+// ── コードトーン編 練習開始（Stage 1: Root固定C・低音3弦・トライアド〜7th系10種類）──
 function startChordPractice() {
   currentGame?.stop();
 
   menuPanel.classList.remove('open');
   showScreen('screen-game');
 
-  // Stage 0 はタイマーなし仕様のため、フッターのストップウォッチ表示は隠す
+  // コード名・進捗テキストを2行表示にするレイアウト用クラス（インターバル編には適用しない）
+  document.body.classList.add('mode-chord');
+
+  // Stage 1 はタイマーなし仕様のため、フッターのストップウォッチ表示は隠す
   elTimer.classList.add('hidden');
   elQNum.textContent = '練習';
 

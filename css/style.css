@@ -236,6 +236,15 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
   letter-spacing: 0.02em;
 }
 
+/* コードトーン編: コード名（上段）と進捗テキスト（下段）を2行表示に。
+   DOM順はroot-name→interval-nameのままだが、column-reverseで視覚順のみ反転させる
+   （インターバル編では同じ要素を横並びのフェーズガイド表示に使うため、mode-chord限定） */
+body.mode-chord .question-area {
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 2px;
+}
+
 /* コントロール行 */
 .game-controls {
   display: flex;
