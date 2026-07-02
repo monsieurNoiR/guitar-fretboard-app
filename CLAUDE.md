@@ -19,7 +19,7 @@ iPad から `https://192.168.1.7:3443` でアクセス（IPアドレスは環境
 - **ゲームロジック**: `game.js`（問題生成・判定・2タップフロー・タイマー）
 - **音楽理論**: `music.js`（ピッチクラス計算・コード定義・LV設定）
 - **スコア保存**: localStorage（モード×LVごと、タイムランキング上位20件）
-- **PWA**: Service Worker キャッシュファースト（`fretboard-v14`）、manifest.json（orientation: landscape）
+- **PWA**: Service Worker キャッシュファースト（`fretboard-v16`）、manifest.json（orientation: landscape）
 
 ## ファイル構成
 
@@ -34,7 +34,7 @@ js/
 css/style.css
 index.html      3画面（ホーム/ゲーム/リザルト）+ ハンバーガーメニュー
 guide.html      初めて触る人向け説明ページ（スタンドアロン）
-sw.js           Service Worker（fretboard-v14）
+sw.js           Service Worker（fretboard-v16）
 manifest.json   PWA設定（orientation: landscape）
 server.js       Node.js HTTPSサーバー（開発用）
 ```
@@ -66,7 +66,7 @@ server.js       Node.js HTTPSサーバー（開発用）
 ### コードトーン編 Stage 1（`js/chordGame.js`）
 - **モード**: 練習のみ（タイマーなし、無限ループ）。10問セット・ランキングは対象外
 - **出題**: ルート C 固定・低音3弦（6〜4弦）固定・`CHORD_TYPE_IDS` の全10種類（maj, min, maj7, min7, dom7, dim7, m7b5, aug, sus2, sus4）からランダム抽選。テンション（9th/11th等）は出題対象外
-- **出題可解性チェック**: `music.js` の `hasSolvableChordTones(rootPc, rootFret, judgeStrings, semitones)` が、ルート×コードタイプの組み合わせ単位で `calcDisplayRange(rootFret)` の表示窓・判定弦内に全構成音が存在するかチェック。`ChordGame._nextChord()` のタイプ抽選は `Game._hasValidAnswer` と同型の再試行パターン（失敗時に最大30回リトライ）。実装前にNode上で機械的に検証済みで、現行の全10種類はいずれも可解（「詰み」になる組み合わせは0件）
+- **出題可解性チェック**: `music.js` の `hasSolvableChordTones(rootPc, rootFret, judgeStrings, semitones)` が、ルート×コードタイプの組み合わせ単位で `calcDisplayRange(rootFret)` の表示窓・判定弦内に全構成音が存在するかチェック。`ChordGame._nextChord()` のタイプ抽選は `Game._hasValidAnswer` と同型の再試行パターン（失敗時に最大30回リトライ）。実装前にNode上で機械的に検証済みで、現行の全10種類はいずれも可解（「詰み」になる組み合わせは0件）。チェック範囲も `_hasValidAnswer` と完全に同型（`start` は指板左端の「フレット線」位置でタップ不可のため実際のループ範囲は `start+1〜end+1`、`start === 0` の場合のみ開放弦0Fを別途許可）。初期実装時はループ下限を `start` からにしていたため実際のタップ判定範囲より1フレット広く、ルート固定のStage 1では偶然辻褄が合っていただけだったが、コードレビューで指摘され修正済み
 - **判定ロジック（未クリア集合方式）**: コード開始時に構成音のピッチクラス集合を持ち、順不同でタップして見つけた度数を集合から消す。集合が空になったら次のコードへ自動遷移（`NEXT_CHORD_DELAY = 800ms`）。フェーズ管理（Root→度数のような順序制約）はしない
 - **進捗表示**: `root-name` 要素に常時テキストで表示（例:「R ✓　3rd ✓　5th ✓　7th（未）」、7th系は4音）。既存の `interval-name` 要素にはコード名（例:「C Minor」）を表示。ヒント機能や表示の補助ON/OFFは対象外
 - **ポリフォニック再生**: `AudioEngine.playChord(midis, duration)` で複数 `OscillatorNode` を同時発音。`_chordVoices` は `midis.map(...)` で可変長対応済み（3音固定ではない）。既存の単音再生 `playNote()`（`_activeVoice` で後勝ちカット）とは別管理にし、互いに干渉しない。`AudioEngine.stopChord()` で再生中のコードを即座にフェードアウト（`ChordGame.stop()` から呼ばれ、ホームボタン離脱時に音を止める）
@@ -80,7 +80,9 @@ server.js       Node.js HTTPSサーバー（開発用）
 
 インターバル編 v1.4.3 完了・GitHub Pages 公開済み（従来の改善に加え、ハンバーガーメニュー表示バグの修正、詰まった時のヒント表示機能（LV.Max除く、ON/OFF切替可）を追加。ヒントドットは実機確認とフィードバックを経て半径 0.2→0.8→0.32、不透明度 0.7→0.5 に調整済み）。
 
-コードトーン編 v1.6 Stage 1 実装・GitHub Pages 公開予定（実機確認待ち）。コードタイプをメジャー/マイナートライアドから7th系を含む全10種類（maj, min, maj7, min7, dom7, dim7, m7b5, aug, sus2, sus4）に拡張。`music.js` に `hasSolvableChordTones()` を新設し、ルート×コードタイプの組み合わせ単位で出題可解性をチェックする仕組みを追加（Stage 0からの申し送り事項を解消）。実装前にNode上で実際のコードを使い全10種類の可解性を機械的に検証済み（「詰み」なし）。テンションは9th/b9のみ窓内到達可能・11th以上は物理的制約により今回スコープ外。詳細仕様は上記「コードトーン編 Stage 1」セクション参照。ルート音の可変化・テンション出題は将来ステージで再検討。
+コードトーン編 v1.6.2 Stage 1 実装・実機確認済み・GitHub Pages 公開済み。コードタイプをメジャー/マイナートライアドから7th系を含む全10種類（maj, min, maj7, min7, dom7, dim7, m7b5, aug, sus2, sus4）に拡張。`music.js` に `hasSolvableChordTones()` を新設し、ルート×コードタイプの組み合わせ単位で出題可解性をチェックする仕組みを追加（Stage 0からの申し送り事項を解消）。実装前にNode上で実際のコードを使い全10種類の可解性を機械的に検証済み（「詰み」なし）。テンションは9th/b9のみ窓内到達可能・11th以上は物理的制約により今回スコープ外。詳細仕様は上記「コードトーン編 Stage 1」セクション参照。ルート音の可変化・テンション出題は将来ステージで再検討。
+
+v1.6.1でコードトーン編の進捗表示を2行レイアウトに変更（`body.mode-chord` クラスでインターバル編と分岐）。v1.6.2で `hasSolvableChordTones()` のチェック範囲を `Game._hasValidAnswer` と完全に同型へ修正（別セッションのコードレビューで指摘。ルート固定のStage 1では実害なかったが、将来ルート可変化時にバグ化するため先行修正）。
 
 v1.5.2でハンバーガーメニューにバージョン表示を追加、v1.5.3で同メニューが画面高さに収まらず一部の設定項目が見えなくなる問題を修正（ヘッダー固定＋本体スクロール化）。両編共通のUI改善。
 
@@ -95,7 +97,7 @@ v1.5.2でハンバーガーメニューにバージョン表示を追加、v1.5.
 
 ## バージョン表示
 
-- `index.html` のハンバーガーメニュー最下部（`.app-version`、使い方ガイドリンクの下）にバージョン番号を表示している（例:「v1.6.0」）
+- `index.html` のハンバーガーメニュー最下部（`.app-version`、使い方ガイドリンクの下）にバージョン番号を表示している（例:「v1.6.2」）
 - **バージョンを上げるたびに、この表示を必ず更新すること**（`log.md` に新しいバージョンのエントリを追加するタイミングと合わせる）
 - 表示内容を変更した場合は `sw.js` のキャッシュバージョンも忘れずに更新する
 

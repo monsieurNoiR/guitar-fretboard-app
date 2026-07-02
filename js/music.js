@@ -238,12 +238,15 @@ export function allPositionsForPc(pc) {
 // コードトーン編: ルート×コードタイプの組み合わせ単位で、指定の表示窓・判定弦内に
 // 全構成音が見つかるか（＝出題として「詰み」にならないか）を判定する。
 // ルートが可変化しても、同じ関数に新しい組み合わせを渡すだけで再利用できる形にしている。
+// Game._hasValidAnswerと同型: startは指板左端の「フレット線」位置でありタップ不可のため
+// 実際のタップ判定範囲は start+1〜end+1。start===0のときのみ開放弦(0F)を別途許可する。
 export function hasSolvableChordTones(rootPc, rootFret, judgeStrings, semitones) {
   const { start, end } = calcDisplayRange(rootFret);
   return semitones.every(semitone => {
     const targetPc = (rootPc + semitone) % 12;
     return judgeStrings.some(s => {
-      for (let f = start; f <= end + 1; f++) {
+      if (start === 0 && getPitchClass(s, 0) === targetPc) return true;
+      for (let f = start + 1; f <= end + 1; f++) {
         if (getPitchClass(s, f) === targetPc) return true;
       }
       return false;

@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.6.2 — 2026-07-02
+
+### hasSolvableChordTones()のチェック範囲をGame._hasValidAnswerと同型に修正
+- **背景**: 別セッションでのコードレビューにより、`js/music.js` の `hasSolvableChordTones()` のチェック下限フレットが、実際にタップ判定を行っている `fretboard.js` / `game.js` の `_hasValidAnswer` より低音側に1フレット広いことが判明。`calcDisplayRange` の `start` は指板左端の「フレット線」位置でありタップ不可のゾーンのため、本来のループ範囲は `start+1〜end+1`
+- **修正**: `hasSolvableChordTones()` のループ下限を `start` → `start+1` に変更。あわせて `_hasValidAnswer` にある「`start === 0` の場合のみ開放弦(0F)を許可する」分岐を追加（ChordGameには `_excludeOpenStrings` 相当の設定が存在しないため、その条件は含めていない）
+- Stage 1（ルートC固定・全10種類）は `start !== 0` のため実害はなかった（修正前は `start` のフレット1本分が余分にヒット対象になっていただけで、たまたま可解性の判定結果は変わらなかった）が、将来ルート可変化時に `start === 0` のケースが発生するとバグ化するため先行修正
+- Node上で修正後も全10種類（maj, min, maj7, min7, dom7, dim7, m7b5, aug, sus2, sus4）が引き続き可解であることを回帰確認。実機でも動作・2行レイアウトに影響がないことを確認
+- `sw.js` を `fretboard-v16` に更新
+
+---
+
 ## v1.6.1 — 2026-07-02
 
 ### コードトーン編の進捗表示を2行レイアウトに調整
