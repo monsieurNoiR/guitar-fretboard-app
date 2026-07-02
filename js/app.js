@@ -3,6 +3,7 @@ import { AudioEngine }  from './audio.js';
 import { Fretboard }    from './fretboard.js';
 import { Game }         from './game.js';
 import { ChordGame }    from './chordGame.js';
+import { ArpeggioGame } from './arpeggioGame.js';
 
 // ── 状態 ──────────────────────────────────────────────────
 let currentGame         = null;
@@ -16,11 +17,14 @@ const audio             = new AudioEngine();
 const screenHome   = document.getElementById('screen-home');
 const btnInterval  = document.getElementById('btn-interval');
 const btnChord     = document.getElementById('btn-chord');
+const btnChordArpeggio = document.getElementById('btn-chord-arpeggio');
 const intervalSection = document.getElementById('interval-section');
 const chordSection    = document.getElementById('chord-section');
+const arpeggioSection = document.getElementById('arpeggio-section');
 const lvList       = document.getElementById('lv-list');
 const btnPractice  = document.getElementById('btn-practice');
 const btnChordPractice = document.getElementById('btn-chord-practice');
+const btnChordArpeggioPractice = document.getElementById('btn-chord-arpeggio-practice');
 
 // ── ゲーム画面 ──
 const screenGame   = document.getElementById('screen-game');
@@ -163,6 +167,37 @@ function startChordPractice() {
   });
 }
 
+// ── コードトーン編 アルペジオモード開始（Stage 2: Root固定C・低音3弦・トライアドのみ）──
+function startChordArpeggio() {
+  currentGame?.stop();
+
+  menuPanel.classList.remove('open');
+  showScreen('screen-game');
+
+  // 発見モードと同じ2行レイアウト用クラスを流用
+  document.body.classList.add('mode-chord');
+
+  // 練習モードのみ・タイマーなし仕様のため、フッターのストップウォッチ表示は隠す
+  elTimer.classList.add('hidden');
+  elQNum.textContent = '練習';
+
+  requestAnimationFrame(() => {
+    fretboard.resize();
+
+    currentGame = new ArpeggioGame({
+      audio,
+      fretboard,
+      hintEnabled,
+      onProgress({ chordName, progressText }) {
+        elIntervalName.textContent = chordName;
+        elRootName.textContent     = progressText;
+      },
+    });
+
+    currentGame.start();
+  });
+}
+
 // ── タイマー表示（ゲーム画面用、秒単位で更新）─────────────────
 let _timerRAF = null;
 function startTimerDisplay() {
@@ -263,19 +298,22 @@ function renderRanking(levelId) {
 
 // ── イベントリスナー ───────────────────────────────────────
 
-// モード選択（インターバル編 ⇄ コードトーン編）
+// モード選択（インターバル編 ⇄ コードトーン編〔発見モード〕⇄ コードトーン編〔アルペジオモード〕）
 function selectMode(mode) {
-  const isInterval = mode === 'interval';
-  btnInterval.classList.toggle('active-mode', isInterval);
-  btnChord.classList.toggle('active-mode', !isInterval);
-  intervalSection.classList.toggle('hidden', !isInterval);
-  chordSection.classList.toggle('hidden', isInterval);
+  btnInterval.classList.toggle('active-mode', mode === 'interval');
+  btnChord.classList.toggle('active-mode', mode === 'chord');
+  btnChordArpeggio.classList.toggle('active-mode', mode === 'arpeggio');
+  intervalSection.classList.toggle('hidden', mode !== 'interval');
+  chordSection.classList.toggle('hidden', mode !== 'chord');
+  arpeggioSection.classList.toggle('hidden', mode !== 'arpeggio');
 }
 btnInterval.addEventListener('click', () => selectMode('interval'));
 btnChord.addEventListener('click', () => selectMode('chord'));
+btnChordArpeggio.addEventListener('click', () => selectMode('arpeggio'));
 
 btnPractice.addEventListener('click', () => startGame(PRACTICE_LEVEL));
 btnChordPractice.addEventListener('click', startChordPractice);
+btnChordArpeggioPractice.addEventListener('click', startChordArpeggio);
 
 btnReplay.addEventListener('click', () => currentGame?.replay());
 

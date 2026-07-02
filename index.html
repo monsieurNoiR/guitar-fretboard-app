@@ -25,7 +25,8 @@
     <section class="mode-section">
       <div class="mode-btns">
         <button id="btn-interval" class="mode-btn active-mode">インターバル編</button>
-        <button id="btn-chord"    class="mode-btn">コードトーン編</button>
+        <button id="btn-chord"    class="mode-btn">コードトーン編（発見）</button>
+        <button id="btn-chord-arpeggio" class="mode-btn">コードトーン編（アルペジオ）</button>
       </div>
     </section>
 
@@ -35,10 +36,16 @@
       <button id="btn-practice" class="lv-btn lv-practice">練習モード（タイムなし）</button>
     </section>
 
-    <!-- コードトーン編: Stage 0（練習モードのみ） -->
+    <!-- コードトーン編〔発見モード〕: Stage 1（練習モードのみ） -->
     <section id="chord-section" class="level-section hidden">
       <p class="chord-intro">コード名を聴いて、構成音を指板上ですべてタップしよう（低音3弦・メジャー/マイナー/7th系 全10種）。</p>
       <button id="btn-chord-practice" class="lv-btn lv-practice">練習をはじめる</button>
+    </section>
+
+    <!-- コードトーン編〔アルペジオモード〕: Stage 2（練習モードのみ） -->
+    <section id="arpeggio-section" class="level-section hidden">
+      <p class="chord-intro">コードをストローク→アルペジオで聴いて、聞こえた順番どおりに指板上をタップしよう（低音3弦・メジャー/マイナートライアドのみ）。</p>
+      <button id="btn-chord-arpeggio-practice" class="lv-btn lv-practice">練習をはじめる</button>
     </section>
   </main>
 </div>
@@ -132,7 +139,7 @@
     </div>
 
     <div class="menu-row">
-      <span class="app-version">v1.6.2</span>
+      <span class="app-version">v1.7.0</span>
     </div>
   </div>
 </div>
