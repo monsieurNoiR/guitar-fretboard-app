@@ -3,21 +3,26 @@ import {
   isChordToneHit,
   calcDisplayRange,
   hasSolvableChordTones,
+  rootPositionCandidates,
   INTERVAL_NAMES,
   CHORD_TYPES,
   noteName,
   STRING_COUNT,
 } from './music.js';
 
-// Stage 1: ルート固定C・低音3弦・トライアド〜7th系10種類
-const CHORD_TYPE_IDS = ['maj', 'min', 'maj7', 'min7', 'dom7', 'dim7', 'm7b5', 'aug', 'sus2', 'sus4'];
-const ROOT_PC     = 0;          // C
-const ROOT_STRING = 0;          // 6弦
-const ROOT_FRET   = 8;          // 6弦8F = C
-const JUDGE_STRINGS = [0, 1, 2]; // 低音3弦（6〜4弦）
+// Stage 4: ルート音を12音フルランダム化（インターバル編LV.4方式: 6/5/4弦 × 0/1オクターブ）。
+// ルート可変化という新しい変数を導入するにあたり、原因切り分けを容易にするため対象コードタイプは
+// 一時的にトライアド（maj/min）のみに絞る（アルペジオモードStage 2と同じ考え方）。
+// 7th系8種類 ['maj7', 'min7', 'dom7', 'dim7', 'm7b5', 'aug', 'sus2', 'sus4'] は次ステージで復帰予定。
+const CHORD_TYPE_IDS = ['maj', 'min'];
+const ROOT_PCS      = [0,1,2,3,4,5,6,7,8,9,10,11];
+const ROOT_STRINGS  = [0, 1, 2];  // 6/5/4弦
+const ROOT_OCTAVES  = [0, 1];
+const JUDGE_STRINGS = [0, 1, 2]; // 判定対象弦は低音3弦のまま固定（ルート位置とは独立）
 
-// 出題可解性チェックのリトライ上限（Game._hasValidAnswerと同じパターン）
-const MAX_TYPE_RETRY = 30;
+// 出題可解性チェックのリトライ上限（Game._nextQuestionと同じパターン。
+// ルートPC・ルートポジション・コードタイプをまとめて再抽選する）
+const MAX_QUESTION_RETRY = 30;
 
 // クリア後、次のコードへ進むまでの待ち時間
 const NEXT_CHORD_DELAY = 800;
@@ -30,7 +35,7 @@ export class ChordGame {
 
     this._fb.onTap(({ stringIdx, fret }) => this.handleTap({ stringIdx, fret }));
 
-    this._rootMidi   = getMidi(ROOT_STRING, ROOT_FRET);
+    this._rootMidi   = null;      // _nextChord()内で毎回計算される
     this._nextTimer  = null;
     this._chordName  = '';
     this._chordTones = [];      // [{ semitone, pc, name }]
@@ -86,22 +91,32 @@ export class ChordGame {
     // インターバル編からの遷移でオレンジのルート確定マーカーが残留しないようにクリア
     this._fb.clearConfirmedRoot();
 
-    let typeId, type;
-    for (let attempt = 0; attempt < MAX_TYPE_RETRY; attempt++) {
+    // Game._nextQuestionと同型: ルートPC・ルートポジション・コードタイプをまとめて再抽選し、
+    // 表示窓・判定弦内に全構成音が収まる（＝詰みにならない）組み合わせを探す
+    let rootPc, rootString, rootFret, rootMidi, typeId, type;
+    let attempts = 0;
+    do {
+      rootPc = ROOT_PCS[Math.floor(Math.random() * ROOT_PCS.length)];
       typeId = CHORD_TYPE_IDS[Math.floor(Math.random() * CHORD_TYPE_IDS.length)];
       type   = CHORD_TYPES[typeId];
-      if (hasSolvableChordTones(ROOT_PC, ROOT_FRET, JUDGE_STRINGS, type.chord)) break;
-    }
+      const pos = this._pickRootPosition(rootPc);
+      rootString = pos.stringIdx;
+      rootFret   = pos.fret;
+      rootMidi   = getMidi(rootString, rootFret);
+      attempts++;
+    } while (!hasSolvableChordTones(rootPc, rootFret, JUDGE_STRINGS, type.chord) && attempts < MAX_QUESTION_RETRY);
+
+    this._rootMidi = rootMidi;
 
     this._chordTones = type.chord.map(semitone => ({
       semitone,
-      pc:   (ROOT_PC + semitone) % 12,
+      pc:   (rootPc + semitone) % 12,
       name: INTERVAL_NAMES[semitone] ?? String(semitone),
     }));
     this._remaining = new Set(this._chordTones.map(t => t.pc));
-    this._chordName = `${noteName(ROOT_PC)} ${type.name}`;
+    this._chordName = `${noteName(rootPc)} ${type.name}`;
 
-    const range = calcDisplayRange(ROOT_FRET);
+    const range = calcDisplayRange(rootFret);
     const maskStrings = new Set(
       Array.from({ length: STRING_COUNT }, (_, s) => s).filter(s => !JUDGE_STRINGS.includes(s))
     );
@@ -114,6 +129,22 @@ export class ChordGame {
   _playChord() {
     const midis = this._chordTones.map(t => this._rootMidi + t.semitone);
     this._audio.playChord(midis, 1.2);
+  }
+
+  // ルート音のポジションを候補（6/5/4弦 × 0/1オクターブ）からランダムに選ぶ
+  // （Game._pickRootPosition・ArpeggioGame._pickRootPositionと同じ考え方。
+  // 候補列挙はmusic.jsのrootPositionCandidatesを使用）
+  _pickRootPosition(rootPc) {
+    const candidates = rootPositionCandidates(rootPc, ROOT_STRINGS, ROOT_OCTAVES);
+    if (candidates.length === 0) {
+      // フォールバック: 6弦上でrootPcに最初に一致するフレット
+      // （ROOT_STRINGS×ROOT_OCTAVESで12音すべて到達可能なため通常は発火しない想定）
+      for (let f = 0; f <= 12; f++) {
+        if (getPitchClass(0, f) === rootPc) return { stringIdx: 0, fret: f };
+      }
+      return { stringIdx: 0, fret: 0 };
+    }
+    return candidates[Math.floor(Math.random() * candidates.length)];
   }
 
   // 進捗テキスト例: 「R ✓　3rd ✓　5th（未）」

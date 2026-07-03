@@ -137,7 +137,7 @@ function startGame(level) {
   });
 }
 
-// ── コードトーン編 練習開始（Stage 1: Root固定C・低音3弦・トライアド〜7th系10種類）──
+// ── コードトーン編 練習開始（Stage 4: ルート12音ランダム・低音3弦・トライアドmaj/minのみ）──
 function startChordPractice() {
   currentGame?.stop();
 

@@ -64,10 +64,11 @@ server.js       Node.js HTTPSサーバー（開発用）
 ### 出題バリデーション
 `_hasValidAnswer(rootPc, rootMidi, semitones, rootFret)` が `calcDisplayRange(rootFret)` の表示窓内に正解ポジションが存在するかチェック。失敗時は最大 30 回リトライ。
 
-### コードトーン編〔発見モード〕Stage 1（`js/chordGame.js`）
+### コードトーン編〔発見モード〕Stage 1〜4（`js/chordGame.js`）
 - **モード**: 練習のみ（タイマーなし、無限ループ）。10問セット・ランキングは対象外
-- **出題**: ルート C 固定・低音3弦（6〜4弦）固定・`CHORD_TYPE_IDS` の全10種類（maj, min, maj7, min7, dom7, dim7, m7b5, aug, sus2, sus4）からランダム抽選。テンション（9th/11th等）は出題対象外
-- **出題可解性チェック**: `music.js` の `hasSolvableChordTones(rootPc, rootFret, judgeStrings, semitones)` が、ルート×コードタイプの組み合わせ単位で `calcDisplayRange(rootFret)` の表示窓・判定弦内に全構成音が存在するかチェック。`ChordGame._nextChord()` のタイプ抽選は `Game._hasValidAnswer` と同型の再試行パターン（失敗時に最大30回リトライ）。実装前にNode上で機械的に検証済みで、現行の全10種類はいずれも可解（「詰み」になる組み合わせは0件）。チェック範囲も `_hasValidAnswer` と完全に同型（`start` は指板左端の「フレット線」位置でタップ不可のため実際のループ範囲は `start+1〜end+1`、`start === 0` の場合のみ開放弦0Fを別途許可）。初期実装時はループ下限を `start` からにしていたため実際のタップ判定範囲より1フレット広く、ルート固定のStage 1では偶然辻褄が合っていただけだったが、コードレビューで指摘され修正済み
+- **出題（Stage 4でルート可変化）**: Stage 1〜3はルートC固定だったが、Stage 4でアルペジオモードStage 3方式（インターバル編LV.4方式）と同型にルート音を12音フルランダム化（`ROOT_PCS`）・弦（`ROOT_STRINGS: [0,1,2]` = 6/5/4弦）・オクターブ（`ROOT_OCTAVES: [0,1]`）も可変。判定対象弦（低音3弦・6〜4弦、`JUDGE_STRINGS`）はルート位置とは独立に固定のまま。**対象コードタイプはルート可変化の原因切り分けを容易にするため一時的にトライアド（maj/min）のみへ絞り込み中**（`CHORD_TYPE_IDS = ['maj','min']`）。7th系8種類（maj7, min7, dom7, dim7, m7b5, aug, sus2, sus4）はコードにコメントで残し次ステージで復帰予定。`music.js` の `CHORD_TYPES` データ構造（全10種類）自体は無変更。テンション（9th/11th等）は出題対象外
+- **ルートポジション抽選**: `ArpeggioGame._pickRootPosition()` と同一の `ChordGame._pickRootPosition()` を新設（`music.js` の共有関数 `rootPositionCandidates(rootPc, rootStrings, rootOctaves)` 呼び出し＋候補ゼロ時フォールバック）。`music.js`・`js/arpeggioGame.js`・`js/game.js` は無変更で流用
+- **出題可解性チェック（Stage 4で動的リトライ化）**: `music.js` の `hasSolvableChordTones(rootPc, rootFret, judgeStrings, semitones)` が、ルート×コードタイプの組み合わせ単位で `calcDisplayRange(rootFret)` の表示窓・判定弦内に全構成音が存在するかチェック。Stage 1〜3はルート固定のためコードタイプのみリトライしていたが、Stage 4で `Game._nextQuestion()` / `ArpeggioGame._nextChord()` と同型の「ルートPC・ルートポジション・コードタイプをまとめて再抽選するdo-whileリトライ」（最大30回、`MAX_TYPE_RETRY` → `MAX_QUESTION_RETRY` にリネーム）へ変更。`hasSolvableChordTones()` 自体は無変更で、呼び出し側で毎回異なる `rootPc`/`rootFret` を渡すだけで対応。Node上で `_nextChord()` を5000回呼び機械検証済み（詰みゼロ・全12音出現・6/5/4弦ほぼ均等分布・両オクターブ出現・maj/minのみ・マスク正常）。チェック範囲は `_hasValidAnswer` と完全に同型（`start` は指板左端の「フレット線」位置でタップ不可のため実際のループ範囲は `start+1〜end+1`、`start === 0` の場合のみ開放弦0Fを別途許可）
 - **判定ロジック（未クリア集合方式）**: コード開始時に構成音のピッチクラス集合を持ち、順不同でタップして見つけた度数を集合から消す。集合が空になったら次のコードへ自動遷移（`NEXT_CHORD_DELAY = 800ms`）。フェーズ管理（Root→度数のような順序制約）はしない
 - **進捗表示**: `root-name` 要素に常時テキストで表示（例:「R ✓　3rd ✓　5th ✓　7th（未）」、7th系は4音）。既存の `interval-name` 要素にはコード名（例:「C Minor」）を表示。ヒント機能や表示の補助ON/OFFは対象外
 - **ポリフォニック再生**: `AudioEngine.playChord(midis, duration)` で複数 `OscillatorNode` を同時発音。`_chordVoices` は `midis.map(...)` で可変長対応済み（3音固定ではない）。既存の単音再生 `playNote()`（`_activeVoice` で後勝ちカット）とは別管理にし、互いに干渉しない。`AudioEngine.stopChord()` で再生中のコードを即座にフェードアウト（`ChordGame.stop()` から呼ばれ、ホームボタン離脱時に音を止める）
@@ -75,7 +76,7 @@ server.js       Node.js HTTPSサーバー（開発用）
 - **タップフィードバックの3値表現**: `Fretboard.showFeedback(stringIdx, fret, state)` の `state` は `true`（正解）/ `false`（不正解）/ `'neutral'`（構成音だが既にクリア済みの度数を別ポジションで再タップ、`COLOR.neutral` の青系で表示）。インターバル編（Gameクラス）は従来通り真偽値のみ渡す
 - **フッタータイマー非表示**: タイマーなし仕様のため、`app.js` の `startChordPractice()` は `elTimer` に `hidden` クラスを付与し `startTimerDisplay()` を呼ばない（`startGame()` 側で `hidden` を解除しているため、インターバル編に戻れば再表示される）
 - **既知の制約（テンションは低音3弦・6フレット窓では原理的に大半が不可能）**: ルートC・6弦8Fの窓（6F〜12F）内では9th(+14)/b9(+13)のみ到達可能で、11th以上（11th/#11th/13th/b13/#9）はMIDI距離が窓幅を超えるため物理的に到達不可。窓を動的に広げる方式は「実際の運指で無理なく弾ける1ポジション分」というコアコンセプトのため却下済み。テンション出題を扱うにはルート可変化・窓再設計を伴う別ステージでの再検討が必要
-- 将来のステージでテンション・ルート音のランダム化・出題度数の部分集合・対象弦の可変設定・出題順序制約（順序固定⇄順不同を段階的に混ぜる案）を追加予定
+- 将来のステージで7th系を含む全10種類へのルート可変化拡大・テンション・出題度数の部分集合・対象弦の可変設定・出題順序制約（順序固定⇄順不同を段階的に混ぜる案）を追加予定。**次ステージへの申し送り**: Stage 4は maj/min トライアドのみに絞っているので、次は `CHORD_TYPE_IDS` に7th系8種類を戻して全10種類でルート可変の可解性を再検証する（`hasSolvableChordTones()` の動的リトライは既にタイプ非依存なので、`CHORD_TYPE_IDS` を戻してNode検証で詰みゼロを確認すれば足りる想定）
 
 ### コードトーン編〔アルペジオモード〕Stage 2〜3（`js/arpeggioGame.js`）
 - **目的**: 発見モード（構成音の同定）とは異なり、「聞いた音の順序の記憶と再現」を鍛える新モード。`game.js↔Game`、`chordGame.js↔ChordGame` と同じ「1クラス1ファイル」の慣例に沿って新規ファイルに分離。`js/chordGame.js` は無変更
@@ -96,15 +97,17 @@ server.js       Node.js HTTPSサーバー（開発用）
 
 インターバル編 v1.4.3 完了・GitHub Pages 公開済み（従来の改善に加え、ハンバーガーメニュー表示バグの修正、詰まった時のヒント表示機能（LV.Max除く、ON/OFF切替可）を追加。ヒントドットは実機確認とフィードバックを経て半径 0.2→0.8→0.32、不透明度 0.7→0.5 に調整済み）。
 
-コードトーン編〔発見モード〕v1.6.2 Stage 1 実装・実機確認済み・GitHub Pages 公開済み。コードタイプをメジャー/マイナートライアドから7th系を含む全10種類（maj, min, maj7, min7, dom7, dim7, m7b5, aug, sus2, sus4）に拡張。`music.js` に `hasSolvableChordTones()` を新設し、ルート×コードタイプの組み合わせ単位で出題可解性をチェックする仕組みを追加（Stage 0からの申し送り事項を解消）。実装前にNode上で実際のコードを使い全10種類の可解性を機械的に検証済み（「詰み」なし）。テンションは9th/b9のみ窓内到達可能・11th以上は物理的制約により今回スコープ外。詳細仕様は上記「コードトーン編〔発見モード〕Stage 1」セクション参照。ルート音の可変化・テンション出題は将来ステージで再検討。
+コードトーン編〔発見モード〕v1.6.2 Stage 1 実装・実機確認済み・GitHub Pages 公開済み。コードタイプをメジャー/マイナートライアドから7th系を含む全10種類（maj, min, maj7, min7, dom7, dim7, m7b5, aug, sus2, sus4）に拡張。`music.js` に `hasSolvableChordTones()` を新設し、ルート×コードタイプの組み合わせ単位で出題可解性をチェックする仕組みを追加（Stage 0からの申し送り事項を解消）。実装前にNode上で実際のコードを使い全10種類の可解性を機械的に検証済み（「詰み」なし）。テンションは9th/b9のみ窓内到達可能・11th以上は物理的制約により今回スコープ外。詳細仕様は上記「コードトーン編〔発見モード〕Stage 1〜4」セクション参照。ルート音の可変化・テンション出題は将来ステージで再検討。
 
 v1.6.1でコードトーン編の進捗表示を2行レイアウトに変更（`body.mode-chord` クラスでインターバル編と分岐）。v1.6.2で `hasSolvableChordTones()` のチェック範囲を `Game._hasValidAnswer` と完全に同型へ修正（別セッションのコードレビューで指摘。ルート固定のStage 1では実害なかったが、将来ルート可変化時にバグ化するため先行修正）。
 
 コードトーン編〔アルペジオモード〕v1.7.0 Stage 2 実装・実機確認済み・GitHub Pages 公開済み。発見モードとは別の新規モードとして `js/arpeggioGame.js`（`ArpeggioGame`クラス）に分離実装。コードをストローク→アルペジオ（ランダム順）で聴き、聞こえた順番どおりにタップして再現する。判定はインターバル編と同型の「フェーズ管理」方式（未クリア集合方式ではない）。ホーム画面に3モード目として追加（インターバル編／コードトーン編〔発見〕／コードトーン編〔アルペジオ〕）。対象はルートC固定・低音3弦・トライアド（maj/min）のみ、7th系・テンションは対象外。発見モードは無変更、`hasSolvableChordTones()`をそのまま流用。
 
-コードトーン編〔アルペジオモード〕v1.8.0 Stage 3 実装・実機相当のブラウザ確認済み・GitHub Pages 公開済み。アルペジオモードのルート音をインターバル編LV.4方式で12音フルランダム化（弦: 6/5/4弦、オクターブ: 0/1）。判定対象弦（低音3弦）・対象コードタイプ（トライアドmaj/minのみ）は変更していない。`music.js` に共有関数 `rootPositionCandidates()` を新設し、`hasSolvableChordTones()` の呼び出しを静的1回チェックから `Game._nextQuestion()` と同型の動的リトライへ変更。発見モード（`js/chordGame.js`）・インターバル編（`js/game.js`）は無変更で、両方への回帰がないことを確認済み。次は発見モードのルート可変化、またはテンション対応（着手前に上記「概念的な申し送り事項」の解消が必須）を検討予定。詳細仕様は上記「コードトーン編〔アルペジオモード〕Stage 2〜3」セクション参照。
+コードトーン編〔アルペジオモード〕v1.8.0 Stage 3 実装・実機相当のブラウザ確認済み・GitHub Pages 公開済み。アルペジオモードのルート音をインターバル編LV.4方式で12音フルランダム化（弦: 6/5/4弦、オクターブ: 0/1）。判定対象弦（低音3弦）・対象コードタイプ（トライアドmaj/minのみ）は変更していない。`music.js` に共有関数 `rootPositionCandidates()` を新設し、`hasSolvableChordTones()` の呼び出しを静的1回チェックから `Game._nextQuestion()` と同型の動的リトライへ変更。発見モード（`js/chordGame.js`）・インターバル編（`js/game.js`）は無変更で、両方への回帰がないことを確認済み。詳細仕様は上記「コードトーン編〔アルペジオモード〕Stage 2〜3」セクション参照。
 
 v1.8.1（インフラのみ、アプリ本体は無変更）で GitHub Pages のデプロイ方式をレガシー方式から GitHub Actions ベース（`.github/workflows/deploy-pages.yml`）へ移行。レガシー方式が `gh run rerun` と相性が悪く queued で詰まる問題への対応。詳細は下記「GitHub Pages」セクション参照。
+
+コードトーン編〔発見モード〕v1.9.0 Stage 4 実装・Node機械検証済み。アルペジオモードStage 3で実装・検証済みのルート可変化の仕組み（`music.js` の共有関数 `rootPositionCandidates()` ＋ 動的do-whileリトライ）を発見モードへ横展開し、ルート音を12音フルランダム化（弦: 6/5/4弦、オクターブ: 0/1）。判定対象弦（低音3弦）は固定のまま。ルート可変化の原因切り分けを容易にするため、対象コードタイプを一時的にトライアド（maj/min）のみへ絞り込み（`CHORD_TYPE_IDS = ['maj','min']`、7th系はコメントで残す）。`js/chordGame.js` のみ変更、`music.js`・`js/arpeggioGame.js`・`js/game.js` は無変更。Node上で `_nextChord()` を5000回呼び機械検証済み（詰みゼロ・全12音出現・6/5/4弦ほぼ均等・両オクターブ出現・maj/minのみ・マスク正常）。次は発見モードの7th系を含む全10種類へのルート可変化拡大、またはテンション対応（着手前に上記「概念的な申し送り事項」の解消が必須）を検討予定。詳細仕様は上記「コードトーン編〔発見モード〕Stage 1〜4」セクション参照。
 
 v1.5.2でハンバーガーメニューにバージョン表示を追加、v1.5.3で同メニューが画面高さに収まらず一部の設定項目が見えなくなる問題を修正（ヘッダー固定＋本体スクロール化）。両編共通のUI改善。
 
