@@ -219,6 +219,25 @@ export function pickRootPc(rootPcs) {
   return rootPcs[Math.floor(Math.random() * rootPcs.length)];
 }
 
+// ルート音のポジション候補を rootStrings × rootOctaves の組み合わせで列挙する。
+// Game._pickRootPosition（js/game.js）と同じ考え方だが、候補抽選・候補ゼロ時の
+// フォールバックは呼び出し側の責務とする（本関数は候補配列を返すだけ）
+export function rootPositionCandidates(rootPc, rootStrings, rootOctaves) {
+  const candidates = [];
+  for (const s of rootStrings) {
+    let baseFret = -1;
+    for (let f = 0; f <= 11; f++) {
+      if (getPitchClass(s, f) === rootPc) { baseFret = f; break; }
+    }
+    if (baseFret < 0) continue;
+    for (const oct of rootOctaves) {
+      const fret = baseFret + oct * 12;
+      if (fret <= MAX_FRET) candidates.push({ stringIdx: s, fret });
+    }
+  }
+  return candidates;
+}
+
 // ランダムなインターバルを選ぶ
 export function pickInterval(intervals) {
   return intervals[Math.floor(Math.random() * intervals.length)];

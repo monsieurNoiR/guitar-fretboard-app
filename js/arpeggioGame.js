@@ -2,21 +2,24 @@ import {
   getPitchClass, getMidi,
   calcDisplayRange,
   hasSolvableChordTones,
+  rootPositionCandidates,
   CHORD_TYPES,
   noteName,
   STRING_COUNT,
   MAX_FRET,
 } from './music.js';
 
-// Stage 2: ルート固定C・低音3弦・トライアド（メジャー/マイナー）のみ。7th系は対象外
+// Stage 3: トライアド（メジャー/マイナー）のみ。7th系は対象外
 const CHORD_TYPE_IDS = ['maj', 'min'];
-const ROOT_PC     = 0;          // C
-const ROOT_STRING = 0;          // 6弦
-const ROOT_FRET   = 8;          // 6弦8F = C
-const JUDGE_STRINGS = [0, 1, 2]; // 低音3弦（6〜4弦）
+// ルート音を12音フルランダム化（インターバル編LV.4方式: 6/5/4弦 × 0/1オクターブ）
+const ROOT_PCS      = [0,1,2,3,4,5,6,7,8,9,10,11];
+const ROOT_STRINGS  = [0, 1, 2];  // 6/5/4弦
+const ROOT_OCTAVES  = [0, 1];
+const JUDGE_STRINGS = [0, 1, 2]; // 判定対象弦は低音3弦のまま固定（ルート位置とは独立）
 
-// 出題可解性チェックのリトライ上限（Game._hasValidAnswerと同じパターン）
-const MAX_TYPE_RETRY = 30;
+// 出題可解性チェックのリトライ上限（Game._nextQuestionと同じパターン。
+// ルートPC・ルートポジション・コードタイプをまとめて再抽選する）
+const MAX_QUESTION_RETRY = 30;
 
 // クリア後、次のコードへ進むまでの待ち時間（発見モードと同じ）
 const NEXT_CHORD_DELAY = 800;
@@ -41,8 +44,8 @@ export class ArpeggioGame {
 
     this._fb.onTap(({ stringIdx, fret }) => this.handleTap({ stringIdx, fret }));
 
-    this._rootMidi       = getMidi(ROOT_STRING, ROOT_FRET);
-    this._currentRange   = null;
+    this._rootMidi        = null; // _nextChord()内で毎回計算される
+    this._currentRange    = null;
     this._chordName      = '';
     this._sequence        = [];   // [{ semitone, pc }] 出題順（シャッフル済み）
     this._phaseIndex      = 0;    // 今何番目の音を待っているか
@@ -111,23 +114,31 @@ export class ArpeggioGame {
     this._fb.clearConfirmedRoot();
     this._fb.clearHints();
 
-    let typeId, type;
-    for (let attempt = 0; attempt < MAX_TYPE_RETRY; attempt++) {
+    let rootPc, rootString, rootFret, rootMidi, typeId, type;
+    let attempts = 0;
+    do {
+      rootPc = ROOT_PCS[Math.floor(Math.random() * ROOT_PCS.length)];
       typeId = CHORD_TYPE_IDS[Math.floor(Math.random() * CHORD_TYPE_IDS.length)];
       type   = CHORD_TYPES[typeId];
-      if (hasSolvableChordTones(ROOT_PC, ROOT_FRET, JUDGE_STRINGS, type.chord)) break;
-    }
+      const pos = this._pickRootPosition(rootPc);
+      rootString = pos.stringIdx;
+      rootFret   = pos.fret;
+      rootMidi   = getMidi(rootString, rootFret);
+      attempts++;
+    } while (!hasSolvableChordTones(rootPc, rootFret, JUDGE_STRINGS, type.chord) && attempts < MAX_QUESTION_RETRY);
+
+    this._rootMidi = rootMidi;
 
     const tones = type.chord.map(semitone => ({
       semitone,
-      pc: (ROOT_PC + semitone) % 12,
+      pc: (rootPc + semitone) % 12,
     }));
     this._sequence   = this._shuffle(tones);
     this._phaseIndex = 0;
     this._answered   = false;
-    this._chordName  = `${noteName(ROOT_PC)} ${type.name}`;
+    this._chordName  = `${noteName(rootPc)} ${type.name}`;
 
-    const range = calcDisplayRange(ROOT_FRET);
+    const range = calcDisplayRange(rootFret);
     this._currentRange = range;
     const maskStrings = new Set(
       Array.from({ length: STRING_COUNT }, (_, s) => s).filter(s => !JUDGE_STRINGS.includes(s))
@@ -217,6 +228,21 @@ export class ArpeggioGame {
       }
     }
     return positions;
+  }
+
+  // ルート音のポジションを候補（6/5/4弦 × 0/1オクターブ）からランダムに選ぶ
+  // （Game._pickRootPositionと同じ考え方。候補列挙はmusic.jsのrootPositionCandidatesを使用）
+  _pickRootPosition(rootPc) {
+    const candidates = rootPositionCandidates(rootPc, ROOT_STRINGS, ROOT_OCTAVES);
+    if (candidates.length === 0) {
+      // フォールバック: 6弦上でrootPcに最初に一致するフレット
+      // （ROOT_STRINGS×ROOT_OCTAVESで12音すべて到達可能なため通常は発火しない想定）
+      for (let f = 0; f <= 12; f++) {
+        if (getPitchClass(0, f) === rootPc) return { stringIdx: 0, fret: f };
+      }
+      return { stringIdx: 0, fret: 0 };
+    }
+    return candidates[Math.floor(Math.random() * candidates.length)];
   }
 
   _shuffle(arr) {
