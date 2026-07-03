@@ -167,7 +167,7 @@ function startChordPractice() {
   });
 }
 
-// ── コードトーン編 アルペジオモード開始（Stage 2: Root固定C・低音3弦・トライアドのみ）──
+// ── コードトーン編 アルペジオモード開始（Stage 3: Root12音ランダム・低音3弦・トライアドのみ）──
 function startChordArpeggio() {
   currentGame?.stop();
 
