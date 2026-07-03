@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.8.1 — 2026-07-03
+
+### GitHub Pages のデプロイ方式を GitHub Actions ベースへ移行
+- **背景**: 従来はレガシー方式（`pages-build-deployment`、GitHubが自動生成する特殊ワークフロー）でデプロイしていたが、`gh run rerun` と相性が悪く queued のまま進まなくなる問題があった（Stage 3 / v1.8.0 デプロイ時に発生）。実際、切り替え作業中にもレガシー実行が33分以上 queued で停滞している痕跡を確認
+- **対応**: `.github/workflows/deploy-pages.yml` を新規追加。ビルド工程不要な静的サイト向けの標準構成（`actions/checkout` → `actions/configure-pages` → `actions/upload-pages-artifact`（`path: .`）→ `actions/deploy-pages`）。トリガーは main への push（＋手動実行用に `workflow_dispatch`）。`permissions`（`pages: write` / `id-token: write`）と `concurrency: pages`（`cancel-in-progress: false`）を設定
+- **切り替え手順**: ワークフロー追加後、`Settings → Pages → Source` を「GitHub Actions」へ手動変更（`build_type` が `legacy` → `workflow` に変わる）。切り替え前にワークフローが一度デプロイ成功済みだったためダウンタイムなしで移行。切り替え後はレガシーの自動ビルドが停止し、Actions ワークフロー単独で走ることを本コミットのデプロイで確認
+- アプリ本体のロジックは無変更（バージョン番号のみ更新）。`sw.js` を `fretboard-v19` に更新
+
+---
+
 ## v1.8.0 — 2026-07-03
 
 ### コードトーン編〔アルペジオモード〕のルート音をランダム化（Stage 3）

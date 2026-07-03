@@ -104,6 +104,8 @@ v1.6.1でコードトーン編の進捗表示を2行レイアウトに変更（`
 
 コードトーン編〔アルペジオモード〕v1.8.0 Stage 3 実装・実機相当のブラウザ確認済み・GitHub Pages 公開済み。アルペジオモードのルート音をインターバル編LV.4方式で12音フルランダム化（弦: 6/5/4弦、オクターブ: 0/1）。判定対象弦（低音3弦）・対象コードタイプ（トライアドmaj/minのみ）は変更していない。`music.js` に共有関数 `rootPositionCandidates()` を新設し、`hasSolvableChordTones()` の呼び出しを静的1回チェックから `Game._nextQuestion()` と同型の動的リトライへ変更。発見モード（`js/chordGame.js`）・インターバル編（`js/game.js`）は無変更で、両方への回帰がないことを確認済み。次は発見モードのルート可変化、またはテンション対応（着手前に上記「概念的な申し送り事項」の解消が必須）を検討予定。詳細仕様は上記「コードトーン編〔アルペジオモード〕Stage 2〜3」セクション参照。
 
+v1.8.1（インフラのみ、アプリ本体は無変更）で GitHub Pages のデプロイ方式をレガシー方式から GitHub Actions ベース（`.github/workflows/deploy-pages.yml`）へ移行。レガシー方式が `gh run rerun` と相性が悪く queued で詰まる問題への対応。詳細は下記「GitHub Pages」セクション参照。
+
 v1.5.2でハンバーガーメニューにバージョン表示を追加、v1.5.3で同メニューが画面高さに収まらず一部の設定項目が見えなくなる問題を修正（ヘッダー固定＋本体スクロール化）。両編共通のUI改善。
 
 - **公開URL**: `https://monsieurnoir.github.io/guitar-fretboard-app/`
@@ -114,6 +116,8 @@ v1.5.2でハンバーガーメニューにバージョン表示を追加、v1.5.
 - すべてのパスは相対パス（`./`）で記述
 - key.pem / cert.pem は .gitignore 済み
 - main ブランチへのプッシュで自動デプロイ
+- **デプロイ方式（v1.8.1〜）**: GitHub Actions ベース。`.github/workflows/deploy-pages.yml` が main への push で起動し、`actions/checkout` → `actions/configure-pages` → `actions/upload-pages-artifact`（`path: .`、ビルド工程なし）→ `actions/deploy-pages` の順で配信する。`Settings → Pages → Source` は「GitHub Actions」（`build_type: workflow`）。手動再実行は `gh workflow run deploy-pages.yml` または Actions 画面の Re-run から
+- **旧デプロイ方式（v1.8.0まで）**: レガシー方式（`pages-build-deployment`、GitHubが自動生成する特殊ワークフロー）。`gh run rerun` と相性が悪く queued のまま詰まる問題があったため v1.8.1 で移行した。Source を Actions に切り替えたことでレガシーの自動ビルドは停止済み（もし将来 Source を「Deploy from a branch」に戻すとレガシー方式が復活する）
 
 ## バージョン表示
 
