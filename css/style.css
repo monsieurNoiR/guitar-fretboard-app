@@ -425,6 +425,10 @@ body.mode-chord .question-area {
   color: var(--accent);
 }
 .wave-btn:active { opacity: 0.7; }
+.wave-btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
 
 .pwa-hint {
   font-size: 0.78rem;

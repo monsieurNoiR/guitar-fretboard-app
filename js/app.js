@@ -1,4 +1,4 @@
-import { INTERVAL_LEVELS, PRACTICE_LEVEL } from './music.js';
+import { INTERVAL_LEVELS, PRACTICE_LEVEL, STRING_COUNT } from './music.js';
 import { AudioEngine }  from './audio.js';
 import { Fretboard }    from './fretboard.js';
 import { Game }         from './game.js';
@@ -10,7 +10,17 @@ let currentGame         = null;
 let currentLevel        = null;
 let excludeOpenStrings  = false;
 let hintEnabled         = true;
+// コードトーン編（発見・アルペジオ共通）の判定弦域。0=6弦〜5=1弦。ルート出現弦も同じ値を共有する
+let judgeStringStart    = 0;
+let judgeStringCount    = 3;
 const audio             = new AudioEngine();
+
+// 「開始弦インデックス, 本数」→ 判定弦域の配列（例: 0,3 → [0,1,2]）
+function computeStringRange() {
+  return Array.from({ length: judgeStringCount }, (_, i) => judgeStringStart + i);
+}
+
+const STRING_LABELS = ['6弦', '5弦', '4弦', '3弦', '2弦', '1弦'];
 
 // ── DOM参照 ───────────────────────────────────────────────
 // ── ホーム画面 ──
@@ -50,7 +60,10 @@ const btnMenu      = document.getElementById('btn-menu');
 const menuPanel    = document.getElementById('menu-panel');
 const btnMenuClose = document.getElementById('btn-menu-close');
 const sliderVol    = document.getElementById('slider-volume');
-const waveButtons  = document.querySelectorAll('.wave-btn');
+const waveButtons  = document.querySelectorAll('#waveform-btns .wave-btn');
+const judgeCountBtns = document.querySelectorAll('#judge-count-btns .wave-btn');
+const judgeStartBtns = document.querySelectorAll('#judge-start-btns .wave-btn');
+const elJudgeStringSummary = document.getElementById('judge-string-summary');
 
 // ── 指板 ──────────────────────────────────────────────────
 const fretboard = new Fretboard(canvas);
@@ -157,6 +170,7 @@ function startChordPractice() {
     currentGame = new ChordGame({
       audio,
       fretboard,
+      stringRange: computeStringRange(),
       onProgress({ chordName, progressText }) {
         elIntervalName.textContent = chordName;
         elRootName.textContent     = progressText;
@@ -188,6 +202,7 @@ function startChordArpeggio() {
       audio,
       fretboard,
       hintEnabled,
+      stringRange: computeStringRange(),
       onProgress({ chordName, progressText }) {
         elIntervalName.textContent = chordName;
         elRootName.textContent     = progressText;
@@ -345,6 +360,38 @@ waveButtons.forEach(btn => {
   });
 });
 
+// コードトーン編：判定弦域（開始弦＋本数）。設定変更は次に「練習をはじめる」を
+// 押した時点で反映される（hintEnabled等、既存の設定項目と同じ反映タイミング）
+function updateJudgeStringUI() {
+  judgeCountBtns.forEach(b => b.classList.toggle('active', Number(b.dataset.count) === judgeStringCount));
+  judgeStartBtns.forEach(b => {
+    const start = Number(b.dataset.start);
+    const valid = start + judgeStringCount <= STRING_COUNT;
+    b.disabled = !valid;
+    b.classList.toggle('active', valid && start === judgeStringStart);
+  });
+  const endLabel = STRING_LABELS[judgeStringStart + judgeStringCount - 1];
+  elJudgeStringSummary.textContent = `${STRING_LABELS[judgeStringStart]}〜${endLabel}`;
+}
+
+judgeCountBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    judgeStringCount = Number(btn.dataset.count);
+    // 本数変更で現在の開始弦が無効になった場合、選べる最大の開始弦に丸める
+    if (judgeStringStart + judgeStringCount > STRING_COUNT) {
+      judgeStringStart = STRING_COUNT - judgeStringCount;
+    }
+    updateJudgeStringUI();
+  });
+});
+
+judgeStartBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    judgeStringStart = Number(btn.dataset.start);
+    updateJudgeStringUI();
+  });
+});
+
 // 開放弦除外トグル
 const btnOpenString = document.getElementById('btn-open-string');
 btnOpenString.addEventListener('click', () => {
@@ -388,6 +435,7 @@ window.addEventListener('orientationchange', () => {
   buildLvList();
   showScreen('screen-home');
   document.querySelector('.wave-btn[data-wave="square"]')?.classList.add('active');
+  updateJudgeStringUI();
   // PWAとしてホーム画面に追加済みの場合は横向きをロック
   screen.orientation?.lock?.('landscape').catch(() => {});
   // 初期向き判定

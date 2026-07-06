@@ -14,11 +14,12 @@ import {
 // Stage 5: 7th系8種類を復帰し、全10種類（CHORD_TYPESの全キー）でルート可変化に対応。
 // 全12rootPc × 全ルート候補位置（6/5/4弦×0/1oct）× 全10種類の直積で hasSolvableChordTones() が
 // 常にtrueになる（詰みゼロ）ことをNode上で全数検証済み。
+// 判定弦カスタマイズ機能（v1.11.0）: 判定弦域はユーザー設定（`stringRange`、コンストラクタ引数）
+// に統合。ルート出現弦も同じ値を共有する（以前は別々の定数がたまたま一致していただけだった）。
 const CHORD_TYPE_IDS = ['maj', 'min', 'maj7', 'min7', 'dom7', 'dim7', 'm7b5', 'aug', 'sus2', 'sus4'];
 const ROOT_PCS      = [0,1,2,3,4,5,6,7,8,9,10,11];
-const ROOT_STRINGS  = [0, 1, 2];  // 6/5/4弦
 const ROOT_OCTAVES  = [0, 1];
-const JUDGE_STRINGS = [0, 1, 2]; // 判定対象弦は低音3弦のまま固定（ルート位置とは独立）
+const DEFAULT_STRING_RANGE = [0, 1, 2]; // 6/5/4弦（stringRange未指定時のフォールバック）
 
 // 出題可解性チェックのリトライ上限（Game._nextQuestionと同じパターン。
 // ルートPC・ルートポジション・コードタイプをまとめて再抽選する）
@@ -28,10 +29,11 @@ const MAX_QUESTION_RETRY = 30;
 const NEXT_CHORD_DELAY = 800;
 
 export class ChordGame {
-  constructor({ audio, fretboard, onProgress }) {
-    this._audio      = audio;
-    this._fb         = fretboard;
-    this._onProgress = onProgress;
+  constructor({ audio, fretboard, stringRange = DEFAULT_STRING_RANGE, onProgress }) {
+    this._audio       = audio;
+    this._fb          = fretboard;
+    this._stringRange = stringRange;
+    this._onProgress  = onProgress;
 
     this._fb.onTap(({ stringIdx, fret }) => this.handleTap({ stringIdx, fret }));
 
@@ -59,7 +61,7 @@ export class ChordGame {
   }
 
   handleTap({ stringIdx, fret }) {
-    if (!JUDGE_STRINGS.includes(stringIdx)) return;
+    if (!this._stringRange.includes(stringIdx)) return;
     if (this._chordTones.length === 0) return;
 
     const pc   = getPitchClass(stringIdx, fret);
@@ -104,7 +106,7 @@ export class ChordGame {
       rootFret   = pos.fret;
       rootMidi   = getMidi(rootString, rootFret);
       attempts++;
-    } while (!hasSolvableChordTones(rootPc, rootFret, JUDGE_STRINGS, type.chord) && attempts < MAX_QUESTION_RETRY);
+    } while (!hasSolvableChordTones(rootPc, rootFret, this._stringRange, type.chord) && attempts < MAX_QUESTION_RETRY);
 
     this._rootMidi = rootMidi;
 
@@ -118,7 +120,7 @@ export class ChordGame {
 
     const range = calcDisplayRange(rootFret);
     const maskStrings = new Set(
-      Array.from({ length: STRING_COUNT }, (_, s) => s).filter(s => !JUDGE_STRINGS.includes(s))
+      Array.from({ length: STRING_COUNT }, (_, s) => s).filter(s => !this._stringRange.includes(s))
     );
     this._fb.draw({ displayRange: range, maskStrings });
 
@@ -131,18 +133,19 @@ export class ChordGame {
     this._audio.playChord(midis, 1.2);
   }
 
-  // ルート音のポジションを候補（6/5/4弦 × 0/1オクターブ）からランダムに選ぶ
+  // ルート音のポジションを候補（判定弦域 × 0/1オクターブ）からランダムに選ぶ
   // （Game._pickRootPosition・ArpeggioGame._pickRootPositionと同じ考え方。
   // 候補列挙はmusic.jsのrootPositionCandidatesを使用）
   _pickRootPosition(rootPc) {
-    const candidates = rootPositionCandidates(rootPc, ROOT_STRINGS, ROOT_OCTAVES);
+    const candidates = rootPositionCandidates(rootPc, this._stringRange, ROOT_OCTAVES);
     if (candidates.length === 0) {
-      // フォールバック: 6弦上でrootPcに最初に一致するフレット
-      // （ROOT_STRINGS×ROOT_OCTAVESで12音すべて到達可能なため通常は発火しない想定）
+      // フォールバック: 判定弦域の最初の弦上でrootPcに最初に一致するフレット
+      // （this._stringRange×ROOT_OCTAVESで12音すべて到達可能なため通常は発火しない想定）
+      const fallbackString = this._stringRange[0];
       for (let f = 0; f <= 11; f++) {
-        if (getPitchClass(0, f) === rootPc) return { stringIdx: 0, fret: f };
+        if (getPitchClass(fallbackString, f) === rootPc) return { stringIdx: fallbackString, fret: f };
       }
-      return { stringIdx: 0, fret: 0 };
+      return { stringIdx: fallbackString, fret: 0 };
     }
     return candidates[Math.floor(Math.random() * candidates.length)];
   }

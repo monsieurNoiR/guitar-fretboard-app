@@ -1,4 +1,4 @@
-const CACHE = 'fretboard-v21';
+const CACHE = 'fretboard-v22';
 const ASSETS = [
   './',
   './index.html',
