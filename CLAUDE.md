@@ -115,6 +115,8 @@ server.js       Node.js HTTPSサーバー（開発用）
   - ハンバーガーメニューの旧UI（`#judge-count-btns`・`#judge-start-btns`・関連イベントリスナー・`.wave-btn:disabled`のCSS）は削除済み
 - **全数検証（v1.11.0時点）**: 有効な弦範囲10通り（本数3: 開始弦0-3の4通り、本数4: 0-2の3通り、本数5: 0-1の2通り、本数6: 0のみ）× 全12rootPc × 全ルート候補位置 × 全10コードタイプ（7200通り）で `hasSolvableChordTones()` を総当たりし、詰み0件を確認済み（3音組・4音組とも全弦範囲パターンで詰みゼロ、特に本数3の高音3弦パターンも含む）。v1.11.1はUIのみの変更でデータモデル・検証ロジックを一切変更していないため、この検証結果はそのまま有効
 - **モック検証（v1.11.0時点）**: デフォルト（6〜4弦）・高音3弦（3〜1弦）・全弦（6本）の3パターンで `_nextChord()` を各2000回実行し、指定弦域内でのみ出現し詰みが発生しないことを確認済み
+- **v1.11.1 コードレビュー結果**（`CODE_REVIEW_2026-07-06_ui-slider-v1.11.1.md`。総合判定: 問題なし・修正必須の指摘0件）: 判定弦カスタマイズ機能はデータモデル（v1.11.0）→UI改善（v1.11.1、全画面デュアルスライダー化）まで完了。ロジックファイル（`js/chordGame.js`・`js/arpeggioGame.js`・`js/music.js`・`js/game.js`）の無変更、最小幅制約の境界ロジック（`applyJudgeRange()`を移植し start×end 全36通り×movedSide 2通り＝72ケース総当たりで不正な状態0件）、`pointer-events`制御（つまみのみ有効・重なりは構造的に発生しない）、値↔`judgeStringStart`/`judgeStringCount`変換のオフバイワンなし、画面遷移・状態整合性（モード切替時の設定復元含む）、旧UI（`updateJudgeStringUI`・`judge-count-btns`・`judge-start-btns`等）の残骸ゼロ、ドキュメント整合性をすべて独立検証で確認済み
+  - **NIT-1（軽微・実害なし・任意対応）**: `js/app.js`の `const screenJudgeStrings = document.getElementById('screen-judge-strings');` は宣言後どこからも参照されていないデッドコード（`showScreen()`はid文字列で`getElementById`するため）。他の画面DOM参照（`screenGame`等）との一貫性で置かれた可能性があり実害はない。次に`js/app.js`を触る機会があれば削除してよい程度
 
 ## 現在の状態（最終更新: 2026-07-06）
 
