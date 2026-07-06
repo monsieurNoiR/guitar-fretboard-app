@@ -183,6 +183,92 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
 }
 
 /* ═══════════════════════════════════════════════════════════
+   判定弦選択画面（コードトーン編：発見・アルペジオ共通）
+════════════════════════════════════════════════════════════ */
+#screen-judge-strings .home-header {
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.judge-string-main { padding-top: 24px; }
+
+.judge-slider {
+  position: relative;
+  height: 40px;
+  margin: 24px 4px 8px;
+}
+
+.judge-slider-track,
+.judge-slider-fill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 2px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.judge-slider-track { background: var(--surface2); }
+.judge-slider-fill   { background: var(--accent); }
+
+/* 2本のrangeを完全に重ね、それぞれのつまみだけをタップ可能にする定番のデュアルレンジ実装 */
+.judge-range-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: none;
+}
+.judge-range-input::-webkit-slider-runnable-track { background: transparent; }
+.judge-range-input::-moz-range-track { background: transparent; border: none; }
+
+.judge-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid var(--bg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  cursor: pointer;
+  margin-top: 8px;
+}
+.judge-range-input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid var(--bg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  cursor: pointer;
+}
+
+.judge-slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 11px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+}
+
+.judge-string-summary {
+  text-align: center;
+  font-size: 1rem;
+  margin-bottom: 20px;
+}
+
+#btn-judge-confirm { align-self: center; }
+
+/* ═══════════════════════════════════════════════════════════
    ゲーム画面
 ════════════════════════════════════════════════════════════ */
 #screen-game {
@@ -425,10 +511,6 @@ body.mode-chord .question-area {
   color: var(--accent);
 }
 .wave-btn:active { opacity: 0.7; }
-.wave-btn:disabled {
-  opacity: 0.35;
-  pointer-events: none;
-}
 
 .pwa-hint {
   font-size: 0.78rem;

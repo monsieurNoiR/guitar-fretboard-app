@@ -13,6 +13,8 @@ let hintEnabled         = true;
 // コードトーン編（発見・アルペジオ共通）の判定弦域。0=6弦〜5=1弦。ルート出現弦も同じ値を共有する
 let judgeStringStart    = 0;
 let judgeStringCount    = 3;
+// 判定弦選択画面から「この設定で練習をはじめる」を押した時にどちらのモードを開始するか
+let pendingPracticeMode = null; // 'chord' | 'arpeggio'
 const audio             = new AudioEngine();
 
 // 「開始弦インデックス, 本数」→ 判定弦域の配列（例: 0,3 → [0,1,2]）
@@ -21,6 +23,8 @@ function computeStringRange() {
 }
 
 const STRING_LABELS = ['6弦', '5弦', '4弦', '3弦', '2弦', '1弦'];
+const MAX_STRING_INDEX = STRING_COUNT - 1; // 5
+const MIN_JUDGE_GAP    = 2; // 最小本数3（終了インデックス - 開始インデックス >= 2）
 
 // ── DOM参照 ───────────────────────────────────────────────
 // ── ホーム画面 ──
@@ -35,6 +39,15 @@ const lvList       = document.getElementById('lv-list');
 const btnPractice  = document.getElementById('btn-practice');
 const btnChordPractice = document.getElementById('btn-chord-practice');
 const btnChordArpeggioPractice = document.getElementById('btn-chord-arpeggio-practice');
+
+// ── 判定弦選択画面 ──
+const screenJudgeStrings = document.getElementById('screen-judge-strings');
+const btnJudgeBack     = document.getElementById('btn-judge-back');
+const btnJudgeConfirm  = document.getElementById('btn-judge-confirm');
+const judgeRangeStart  = document.getElementById('judge-range-start');
+const judgeRangeEnd    = document.getElementById('judge-range-end');
+const judgeSliderFill  = document.getElementById('judge-slider-fill');
+const elJudgeStringSummary = document.getElementById('judge-string-summary');
 
 // ── ゲーム画面 ──
 const screenGame   = document.getElementById('screen-game');
@@ -61,9 +74,6 @@ const menuPanel    = document.getElementById('menu-panel');
 const btnMenuClose = document.getElementById('btn-menu-close');
 const sliderVol    = document.getElementById('slider-volume');
 const waveButtons  = document.querySelectorAll('#waveform-btns .wave-btn');
-const judgeCountBtns = document.querySelectorAll('#judge-count-btns .wave-btn');
-const judgeStartBtns = document.querySelectorAll('#judge-start-btns .wave-btn');
-const elJudgeStringSummary = document.getElementById('judge-string-summary');
 
 // ── 指板 ──────────────────────────────────────────────────
 const fretboard = new Fretboard(canvas);
@@ -327,8 +337,8 @@ btnChord.addEventListener('click', () => selectMode('chord'));
 btnChordArpeggio.addEventListener('click', () => selectMode('arpeggio'));
 
 btnPractice.addEventListener('click', () => startGame(PRACTICE_LEVEL));
-btnChordPractice.addEventListener('click', startChordPractice);
-btnChordArpeggioPractice.addEventListener('click', startChordArpeggio);
+btnChordPractice.addEventListener('click', () => openJudgeStringScreen('chord'));
+btnChordArpeggioPractice.addEventListener('click', () => openJudgeStringScreen('arpeggio'));
 
 btnReplay.addEventListener('click', () => currentGame?.replay());
 
@@ -360,36 +370,68 @@ waveButtons.forEach(btn => {
   });
 });
 
-// コードトーン編：判定弦域（開始弦＋本数）。設定変更は次に「練習をはじめる」を
-// 押した時点で反映される（hintEnabled等、既存の設定項目と同じ反映タイミング）
-function updateJudgeStringUI() {
-  judgeCountBtns.forEach(b => b.classList.toggle('active', Number(b.dataset.count) === judgeStringCount));
-  judgeStartBtns.forEach(b => {
-    const start = Number(b.dataset.start);
-    const valid = start + judgeStringCount <= STRING_COUNT;
-    b.disabled = !valid;
-    b.classList.toggle('active', valid && start === judgeStringStart);
-  });
-  const endLabel = STRING_LABELS[judgeStringStart + judgeStringCount - 1];
-  elJudgeStringSummary.textContent = `${STRING_LABELS[judgeStringStart]}〜${endLabel}`;
+// コードトーン編：判定弦域（開始弦＋本数）。デュアルレンジスライダーで選択する
+// （発見モード・アルペジオモード共通、「練習をはじめる」の直前に専用画面で設定する）
+function openJudgeStringScreen(mode) {
+  pendingPracticeMode = mode;
+  menuPanel.classList.remove('open');
+  syncJudgeSliderUI();
+  showScreen('screen-judge-strings');
 }
 
-judgeCountBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    judgeStringCount = Number(btn.dataset.count);
-    // 本数変更で現在の開始弦が無効になった場合、選べる最大の開始弦に丸める
-    if (judgeStringStart + judgeStringCount > STRING_COUNT) {
-      judgeStringStart = STRING_COUNT - judgeStringCount;
-    }
-    updateJudgeStringUI();
-  });
-});
+// 現在の judgeStringStart/judgeStringCount をスライダーのつまみ位置に反映する
+function syncJudgeSliderUI() {
+  judgeRangeStart.value = String(judgeStringStart);
+  judgeRangeEnd.value   = String(judgeStringStart + judgeStringCount - 1);
+  updateJudgeSliderVisual();
+}
 
-judgeStartBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    judgeStringStart = Number(btn.dataset.start);
-    updateJudgeStringUI();
-  });
+// fillバーの位置・幅と要約テキストを再描画する
+function updateJudgeSliderVisual() {
+  const endIdx = judgeStringStart + judgeStringCount - 1;
+  const leftPct  = (judgeStringStart / MAX_STRING_INDEX) * 100;
+  const rightPct = (endIdx / MAX_STRING_INDEX) * 100;
+  judgeSliderFill.style.left  = `${leftPct}%`;
+  judgeSliderFill.style.width = `${rightPct - leftPct}%`;
+  elJudgeStringSummary.textContent =
+    `${STRING_LABELS[judgeStringStart]}〜${STRING_LABELS[endIdx]}（${judgeStringCount}本）を使用`;
+}
+
+// 2つのつまみの間に最小ギャップ（3本分）を保ちつつ、動かした側に応じてもう片方を押し出す
+function applyJudgeRange(movedSide) {
+  let startVal = Number(judgeRangeStart.value);
+  let endVal   = Number(judgeRangeEnd.value);
+
+  if (endVal - startVal < MIN_JUDGE_GAP) {
+    if (movedSide === 'start') {
+      endVal = startVal + MIN_JUDGE_GAP;
+      if (endVal > MAX_STRING_INDEX) {
+        endVal   = MAX_STRING_INDEX;
+        startVal = endVal - MIN_JUDGE_GAP;
+      }
+    } else {
+      startVal = endVal - MIN_JUDGE_GAP;
+      if (startVal < 0) {
+        startVal = 0;
+        endVal   = startVal + MIN_JUDGE_GAP;
+      }
+    }
+    judgeRangeStart.value = String(startVal);
+    judgeRangeEnd.value   = String(endVal);
+  }
+
+  judgeStringStart = startVal;
+  judgeStringCount = endVal - startVal + 1;
+  updateJudgeSliderVisual();
+}
+
+judgeRangeStart.addEventListener('input', () => applyJudgeRange('start'));
+judgeRangeEnd.addEventListener('input',   () => applyJudgeRange('end'));
+
+btnJudgeBack.addEventListener('click', () => showScreen('screen-home'));
+btnJudgeConfirm.addEventListener('click', () => {
+  if (pendingPracticeMode === 'chord') startChordPractice();
+  else if (pendingPracticeMode === 'arpeggio') startChordArpeggio();
 });
 
 // 開放弦除外トグル
@@ -435,7 +477,7 @@ window.addEventListener('orientationchange', () => {
   buildLvList();
   showScreen('screen-home');
   document.querySelector('.wave-btn[data-wave="square"]')?.classList.add('active');
-  updateJudgeStringUI();
+  syncJudgeSliderUI();
   // PWAとしてホーム画面に追加済みの場合は横向きをロック
   screen.orientation?.lock?.('landscape').catch(() => {});
   // 初期向き判定
