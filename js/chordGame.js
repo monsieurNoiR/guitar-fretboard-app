@@ -11,10 +11,10 @@ import {
 } from './music.js';
 
 // Stage 4: ルート音を12音フルランダム化（インターバル編LV.4方式: 6/5/4弦 × 0/1オクターブ）。
-// ルート可変化という新しい変数を導入するにあたり、原因切り分けを容易にするため対象コードタイプは
-// 一時的にトライアド（maj/min）のみに絞る（アルペジオモードStage 2と同じ考え方）。
-// 7th系8種類 ['maj7', 'min7', 'dom7', 'dim7', 'm7b5', 'aug', 'sus2', 'sus4'] は次ステージで復帰予定。
-const CHORD_TYPE_IDS = ['maj', 'min'];
+// Stage 5: 7th系8種類を復帰し、全10種類（CHORD_TYPESの全キー）でルート可変化に対応。
+// 全12rootPc × 全ルート候補位置（6/5/4弦×0/1oct）× 全10種類の直積で hasSolvableChordTones() が
+// 常にtrueになる（詰みゼロ）ことをNode上で全数検証済み。
+const CHORD_TYPE_IDS = ['maj', 'min', 'maj7', 'min7', 'dom7', 'dim7', 'm7b5', 'aug', 'sus2', 'sus4'];
 const ROOT_PCS      = [0,1,2,3,4,5,6,7,8,9,10,11];
 const ROOT_STRINGS  = [0, 1, 2];  // 6/5/4弦
 const ROOT_OCTAVES  = [0, 1];
@@ -139,7 +139,7 @@ export class ChordGame {
     if (candidates.length === 0) {
       // フォールバック: 6弦上でrootPcに最初に一致するフレット
       // （ROOT_STRINGS×ROOT_OCTAVESで12音すべて到達可能なため通常は発火しない想定）
-      for (let f = 0; f <= 12; f++) {
+      for (let f = 0; f <= 11; f++) {
         if (getPitchClass(0, f) === rootPc) return { stringIdx: 0, fret: f };
       }
       return { stringIdx: 0, fret: 0 };

@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.10.0 — 2026-07-06
+
+### コードトーン編〔発見モード〕の7th系8種類を復帰し全10種類対応を完了（Stage 5）
+- **背景**: Stage 4（v1.9.0）でルート音を12音フルランダム化した際、切り分けを容易にするため対象コードタイプを一時的に maj/min トライアドのみへ絞り込んでいた。Stage 4のコードレビュー（`CODE_REVIEW_2026-07-03_chordgame-stage4.md`）のF1申し送りに対応し、7th系8種類（maj7, min7, dom7, dim7, m7b5, aug, sus2, sus4）を復帰する
+- **変更点**: `js/chordGame.js` の `CHORD_TYPE_IDS` を `['maj', 'min']` から全10種類（`music.js` の `CHORD_TYPES` 全キー）に復帰。`_nextChord()` のdo-whileリトライ（`hasSolvableChordTones()` による判定、最大30回）はコードタイプ非依存の設計のため変更不要。`music.js`・`js/arpeggioGame.js`・`js/game.js` は無変更
+- **全数検証（F1対応）**: 実装前にNode上で、全12 rootPc × 全ルート候補位置（`rootPositionCandidates()` が返す6/5/4弦×0/1オクターブの候補、計540通り）× 全10コードタイプの直積で `hasSolvableChordTones()` を総当たり実行。3音組（maj, min, sus2, sus4, aug: 270通り）・4音組（maj7, min7, dom7, dim7, m7b5: 270通り）とも詰み0件を確認
+- **モック検証**: `ChordGame._nextChord()` をAudio/Fretboardモック経由で5000回呼び出し、全12rootPc・6/5/4弦（ほぼ均等）・両オクターブ・全10コードタイプが偏りなく出現し、詰みが一度も発生しないことを確認
+- **任意対応（N1nit）**: `_pickRootPosition()` のフォールバックのフレット探索上限を `f = 0..12` → `f = 0..11` に統一し、`music.js` の `rootPositionCandidates()` と揃えた（フォールバック自体は候補ゼロ時のデッドコードのため実害なし）。`ArpeggioGame._pickRootPosition()` は今回のスコープ外のため未修正
+- **次ステージへの申し送り**: 発見モードのルート可変化・全10種類対応はこれで完了。次はテンション対応を検討するが、着手前に「オクターブ無視ルールがテンション判定を無効化していないか」という概念的な疑問（発見モードStage 1のテンション実装・インターバル編LV.4/LV.Maxを含めて未検証）を必ず解消すること
+- `sw.js` を `fretboard-v21` に更新
+
+---
+
 ## v1.9.0 — 2026-07-03
 
 ### コードトーン編〔発見モード〕のルート音をランダム化（Stage 4）
