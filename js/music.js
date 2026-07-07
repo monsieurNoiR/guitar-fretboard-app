@@ -28,12 +28,11 @@ export function noteName(pc) {
 // ── コード定義 ─────────────────────────────────────────────
 // chord: ルートからの半音数配列（コードトーン、0〜11のピッチクラス）
 // tensions: { 表示名: ルートからの半音数 }（12以上がテンション扱い。生の半音数でmod12化していない）
-// ※ コードトーン編（chordGame.js/arpeggioGame.js）がオクターブを無視して判定するのは妥協ではなく
-//   意図的な設計判断（鳴っているコードの中でどの音を弾くかという演奏上の問いには、基準音との距離を
-//   厳密に問うインターバル編とは異なる判定基準が正しい）。tensionsフィールドは現状どちらからも未使用で、
-//   将来テンション出題を実装する際はisTensionHit()のようなオクターブ厳密判定を流用するのではなく、
-//   既存の7th系/aug/sus系と同じ仕組みでtype.chordにピッチクラス化した値（9th→2、b9→1など）を
-//   加える形にすること（tensionsの生の半音数はそのままでは使えない。削除はせず将来の参考として残す）
+// ※ コードトーン編（chordGame.js）がオクターブを無視して判定するのは妥協ではなく意図的な設計判断
+//   （鳴っているコードの中でどの音を弾くかという演奏上の問いには、基準音との距離を厳密に問う
+//   インターバル編とは異なる判定基準が正しい）。Stage 6（v1.12.0）からchordGame.jsが
+//   extendedChordTones()経由でtensionsをオクターブ無視・ピッチクラスベースで出題に使用する
+//   （isTensionHit()のようなオクターブ厳密判定は流用しない。アルペジオモードは今回未対応）
 export const CHORD_TYPES = {
   maj:  {
     name: 'Major',
@@ -279,6 +278,27 @@ export function hasSolvableChordTones(rootPc, rootFret, judgeStrings, semitones)
       return false;
     });
   });
+}
+
+// コードトーン編〔発見モード〕Stage 6: type.chord（基本構成音）とtype.tensions（テンション）を
+// 統合した「拡張構成音リスト」を返す。オクターブ無視・ピッチクラスベースの設計のため、
+// ピッチクラスが重複するテンションは追加しない（sus2の9th=14半音はコード内の2nd=2半音と
+// ピッチクラスが一致するため、この重複除去により実質的にスキップされる。他の9コードタイプは
+// 基本構成音とテンションのpcが衝突しないため影響なし）。semitoneは生の値のまま保持する
+// （_playChord()でルートMIDIに加算して実際に鳴らす音の高さを決めるため、mod12化すると
+// テンションが基本構成音と同じオクターブで鳴ってしまい不自然になる）
+export function extendedChordTones(type) {
+  const seenPcs = new Set();
+  const tones = [];
+  const push = (semitone, name) => {
+    const pc = ((semitone % 12) + 12) % 12;
+    if (seenPcs.has(pc)) return;
+    seenPcs.add(pc);
+    tones.push({ semitone, name });
+  };
+  type.chord.forEach(semitone => push(semitone, INTERVAL_NAMES[semitone] ?? String(semitone)));
+  Object.entries(type.tensions).forEach(([name, semitone]) => push(semitone, name));
+  return tones;
 }
 
 // コードトーン編で使用予定
