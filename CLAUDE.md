@@ -19,7 +19,7 @@ iPad から `https://192.168.1.7:3443` でアクセス（IPアドレスは環境
 - **ゲームロジック**: `game.js`（問題生成・判定・2タップフロー・タイマー）
 - **音楽理論**: `music.js`（ピッチクラス計算・コード定義・LV設定）
 - **スコア保存**: localStorage（モード×LVごと、タイムランキング上位20件）
-- **PWA**: Service Worker キャッシュファースト（`fretboard-v17`）、manifest.json（orientation: landscape）
+- **PWA**: Service Worker キャッシュファースト（`fretboard-v24`）、manifest.json（orientation: landscape）
 
 ## ファイル構成
 
@@ -35,7 +35,7 @@ js/
 css/style.css
 index.html      3画面（ホーム/ゲーム/リザルト）+ ハンバーガーメニュー
 guide.html      初めて触る人向け説明ページ（スタンドアロン）
-sw.js           Service Worker（fretboard-v17）
+sw.js           Service Worker（fretboard-v24）
 manifest.json   PWA設定（orientation: landscape）
 server.js       Node.js HTTPSサーバー（開発用）
 ```
@@ -94,6 +94,10 @@ server.js       Node.js HTTPSサーバー（開発用）
   - **全数検証**: 有効な弦範囲10通り（本数3〜6）× 全12rootPc × 全ルート候補位置 × 全10コードタイプの拡張構成音セット（合計7200通り）で`hasSolvableChordTones()`を総当たりし、**詰み0件**を確認（dom7の10音・判定弦3本の組み合わせも含む）
   - **モック検証**: Audio/Fretboardをモック化した`ChordGame._nextChord()`を5000回実行し、コードタイプごとの音数が期待通り（sus2=3, dom7=10等）で常に一定であること、`_chordTones`内でpcの重複が発生しないことを確認
   - **スコープ外**: アルペジオモード（`js/arpeggioGame.js`）・インターバル編（`js/game.js`）は無変更。アルペジオモードは7th系自体が未対応のため、テンション対応は別課題として引き続き切り離す
+  - **Stage 6 コードレビュー結果**（`CODE_REVIEW_2026-07-07_chordgame-tensions-stage6.md`）: 修正不要と結論
+    - **F1（見送り・要再検討事項として記録）**: dom7の10音同時発音による音量クリッピングの可能性を指摘。実機確認の結果、気にならなかったため今回は対応を見送り。将来的に同時発音数がさらに増える変更（追加のテンション対応や別のコードタイプ拡張等）を行う際は、`js/audio.js`の`playChord()`に音量正規化やコンプレッサーを入れる対応を再検討すること
+    - **INFO-2（対応済み）**: CLAUDE.md内のSWバージョン記述が`fretboard-v17`のまま古かった点を、実際の値（`fretboard-v24`）に修正
+    - **INFO-3（既存事象・対応不要）**: dim7の6th表記（INFO-1として上記Stage 5レビューで既出）の再掲。記録のみ
 
 ### コードトーン編〔アルペジオモード〕Stage 2〜3（`js/arpeggioGame.js`）
 - **目的**: 発見モード（構成音の同定）とは異なり、「聞いた音の順序の記憶と再現」を鍛える新モード。`game.js↔Game`、`chordGame.js↔ChordGame` と同じ「1クラス1ファイル」の慣例に沿って新規ファイルに分離。`js/chordGame.js` は無変更
@@ -150,7 +154,7 @@ v1.8.1（インフラのみ、アプリ本体は無変更）で GitHub Pages の
 
 2026-07-07、長年の申し送りだった「オクターブ無視ルールとテンション判定の整合性」を調査。結論：発見モード・アルペジオモードともテンション判定ロジック自体が未実装（`CHORD_TYPES.tensions`は定義のみで`chordGame.js`/`arpeggioGame.js`のどちらからも未参照）で、現行コードは矛盾なく方針通りに動いている。方針も確定：インターバル編（基準音からの距離を問う）とコードトーン編（鳴っているコードの中でどの音を弾くかを問う）は問うべき問いが別物であり、コードトーン編はオクターブ無視のままで正しい設計。コード修正は不要と判断し、`music.js`に設計意図のコメントを追記した。詳細は上記「発見モード」「アルペジオモード」各セクションの該当項目を参照。
 
-コードトーン編〔発見モード〕v1.12.0 Stage 6 実装・Node機械検証済み。上記の方針確認を受け、`CHORD_TYPES.tensions`に定義済みの全テンション（9th・b9・#9・11th・#11th・13th・b13）を基本構成音とあわせて毎回まとめて出題する機能を追加。`music.js`に新規関数`extendedChordTones(type)`を追加し、基本構成音とテンションを統合してピッチクラス重複を除去した拡張構成音セットを生成（`hasSolvableChordTones()`は`(rootPc + semitone) % 12`を内部で計算する既存実装のまま無変更で対応、`chordGame.js`の`handleTap()`/`_emitProgress()`/`_playChord()`も`_chordTones`配列に対する汎用ロジックのため無変更。変更は`_nextChord()`内の2箇所のみ）。sus2は基本構成音2ndとテンション9thのピッチクラスが一致する唯一のケースで、重複除去により実質R・2nd・5thの3音のまま出題（9thは2ndに吸収）。拡張後の実質音数はコードタイプにより3〜10音（sus2最少・dom7最多）。全数検証（有効な弦範囲10通り×全12rootPc×全ルート候補位置×全10コードタイプ、7200通り）・モック検証（`_nextChord()`5000回）とも詰みゼロを確認。アルペジオモード（`js/arpeggioGame.js`）・インターバル編（`js/game.js`）は今回のスコープ外につき無変更。詳細仕様は上記「コードトーン編〔発見モード〕Stage 1〜6」セクションの「Stage 6」項目参照。
+コードトーン編〔発見モード〕v1.12.0 Stage 6 実装・Node機械検証済み。上記の方針確認を受け、`CHORD_TYPES.tensions`に定義済みの全テンション（9th・b9・#9・11th・#11th・13th・b13）を基本構成音とあわせて毎回まとめて出題する機能を追加。`music.js`に新規関数`extendedChordTones(type)`を追加し、基本構成音とテンションを統合してピッチクラス重複を除去した拡張構成音セットを生成（`hasSolvableChordTones()`は`(rootPc + semitone) % 12`を内部で計算する既存実装のまま無変更で対応、`chordGame.js`の`handleTap()`/`_emitProgress()`/`_playChord()`も`_chordTones`配列に対する汎用ロジックのため無変更。変更は`_nextChord()`内の2箇所のみ）。sus2は基本構成音2ndとテンション9thのピッチクラスが一致する唯一のケースで、重複除去により実質R・2nd・5thの3音のまま出題（9thは2ndに吸収）。拡張後の実質音数はコードタイプにより3〜10音（sus2最少・dom7最多）。全数検証（有効な弦範囲10通り×全12rootPc×全ルート候補位置×全10コードタイプ、7200通り）・モック検証（`_nextChord()`5000回）とも詰みゼロを確認。アルペジオモード（`js/arpeggioGame.js`）・インターバル編（`js/game.js`）は今回のスコープ外につき無変更。実機（ブラウザ）でdom7（10音）・dim7（5音）を実際にタップして完走・自動遷移することも確認済み。別セッションのコードレビュー（`CODE_REVIEW_2026-07-07_chordgame-tensions-stage6.md`）で修正不要と結論。F1（dom7の10音同時発音による音量クリッピングの可能性）は実機確認で気にならなかったため今回は対応を見送り、将来さらに同時発音数が増える変更を行う際に`js/audio.js`の`playChord()`への音量正規化・コンプレッサー導入を再検討する申し送りとした。詳細仕様は上記「コードトーン編〔発見モード〕Stage 1〜6」セクションの「Stage 6」項目参照。
 
 v1.5.2でハンバーガーメニューにバージョン表示を追加、v1.5.3で同メニューが画面高さに収まらず一部の設定項目が見えなくなる問題を修正（ヘッダー固定＋本体スクロール化）。両編共通のUI改善。
 
