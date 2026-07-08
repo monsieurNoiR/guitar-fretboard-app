@@ -9,8 +9,9 @@ import {
   MAX_FRET,
 } from './music.js';
 
-// Stage 3: トライアド（メジャー/マイナー）のみ。7th系は対象外
-const CHORD_TYPE_IDS = ['maj', 'min'];
+// v1.14.0: 発見モード（chordGame.js）Stage 5と同様、全10種類のコードタイプに対応
+// （maj, min, maj7, min7, dom7, dim7, m7b5, aug, sus2, sus4）。テンションは対象外
+const CHORD_TYPE_IDS = ['maj', 'min', 'maj7', 'min7', 'dom7', 'dim7', 'm7b5', 'aug', 'sus2', 'sus4'];
 // ルート音を12音フルランダム化（インターバル編LV.4方式: 6/5/4弦 × 0/1オクターブ）
 const ROOT_PCS      = [0,1,2,3,4,5,6,7,8,9,10,11];
 const ROOT_OCTAVES  = [0, 1];
@@ -138,7 +139,9 @@ export class ArpeggioGame {
     this._sequence   = this._shuffle(tones);
     this._phaseIndex = 0;
     this._answered   = false;
-    this._chordName  = `${noteName(rootPc)} ${type.name}`;
+    // 発見モード（v1.13.0〜）と同じ記号表記に統一（例:「C7」「C#dim7」）。
+    // アルペジオモードはテンション非対応のため括弧表記は付けない
+    this._chordName  = `${noteName(rootPc)}${type.symbol}`;
 
     const range = calcDisplayRange(rootFret);
     this._currentRange = range;
