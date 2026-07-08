@@ -30,61 +30,76 @@ export function noteName(pc) {
 // tensions: { 表示名: ルートからの半音数 }（12以上がテンション扱い。生の半音数でmod12化していない）
 // ※ コードトーン編（chordGame.js）がオクターブを無視して判定するのは妥協ではなく意図的な設計判断
 //   （鳴っているコードの中でどの音を弾くかという演奏上の問いには、基準音との距離を厳密に問う
-//   インターバル編とは異なる判定基準が正しい）。Stage 6（v1.12.0）からchordGame.jsが
-//   extendedChordTones()経由でtensionsをオクターブ無視・ピッチクラスベースで出題に使用する
+//   インターバル編とは異なる判定基準が正しい）。v1.13からchordGame.jsが
+//   pickChordToneSet()経由でtensionsから毎回1個ランダムに選び、オクターブ無視・
+//   ピッチクラスベースで出題に使用する
 //   （isTensionHit()のようなオクターブ厳密判定は流用しない。アルペジオモードは今回未対応）
+// symbol: noteName(rootPc) の直後に連結するコード記号（例: 'C' + '7' = 'C7'）。
+// 既存のtensionsキー（'b9'等）とASCII表記で統一するため♭記号は使わない
 export const CHORD_TYPES = {
   maj:  {
     name: 'Major',
+    symbol: '',
     chord: [0, 4, 7],
     tensions: { '9th': 14, '11th': 17, '13th': 21 },
   },
   min:  {
     name: 'Minor',
+    symbol: 'm',
     chord: [0, 3, 7],
     tensions: { '9th': 14, '11th': 17, 'b13': 20 },
   },
   maj7: {
     name: 'Major 7th',
+    symbol: 'maj7',
     chord: [0, 4, 7, 11],
     tensions: { '9th': 14, '#11th': 18, '13th': 21 },
   },
   min7: {
     name: 'Minor 7th',
+    symbol: 'm7',
     chord: [0, 3, 7, 10],
     tensions: { '9th': 14, '11th': 17, '13th': 21 },
   },
   dom7: {
     name: 'Dominant 7th',
+    symbol: '7',
     chord: [0, 4, 7, 10],
     tensions: { 'b9': 13, '9th': 14, '#9': 15, '11th': 17, '#11th': 18, '13th': 21 },
   },
   dim7: {
     name: 'Diminished 7',
+    symbol: 'dim7',
     chord: [0, 3, 6, 9],
     // dim7は対称コード。慣習的にb9が使われる。M9は理論上可能だが実用では稀
     tensions: { 'b9': 13 },
   },
   m7b5: {
     name: 'Half Dim',
+    symbol: 'm7b5',
     chord: [0, 3, 6, 10],
     // ロクリアン(b9)またはロクリアン#2(9th)どちらも実用的
     tensions: { 'b9': 13, '9th': 14, '11th': 17 },
   },
   aug:  {
     name: 'Augmented',
+    symbol: 'aug',
     chord: [0, 4, 8],
     // V+ として使用時にb9・9th・#9が頻出（オルタードドミナント系）
     tensions: { 'b9': 13, '9th': 14, '#9': 15 },
   },
   sus2: {
     name: 'Sus2',
+    symbol: 'sus2',
     chord: [0, 2, 7],
-    // 2nd（コードトーン）とは別に、9th（12半音以上）は位置で区別できるテンションとして追加
+    // 2nd（コードトーン）とは別に、9th（12半音以上）は位置で区別できるテンションとして追加。
+    // 発見モードのpickChordToneSet()は、9thが2ndとピッチクラス衝突するためsus2をテンション抽選
+    // 対象から明示的に除外する（常にテンションなしで出題）
     tensions: { '9th': 14 },
   },
   sus4: {
     name: 'Sus4',
+    symbol: 'sus4',
     chord: [0, 5, 7],
     tensions: { '9th': 14 },
   },
@@ -280,25 +295,32 @@ export function hasSolvableChordTones(rootPc, rootFret, judgeStrings, semitones)
   });
 }
 
-// コードトーン編〔発見モード〕Stage 6: type.chord（基本構成音）とtype.tensions（テンション）を
-// 統合した「拡張構成音リスト」を返す。オクターブ無視・ピッチクラスベースの設計のため、
-// ピッチクラスが重複するテンションは追加しない（sus2の9th=14半音はコード内の2nd=2半音と
-// ピッチクラスが一致するため、この重複除去により実質的にスキップされる。他の9コードタイプは
-// 基本構成音とテンションのpcが衝突しないため影響なし）。semitoneは生の値のまま保持する
-// （_playChord()でルートMIDIに加算して実際に鳴らす音の高さを決めるため、mod12化すると
-// テンションが基本構成音と同じオクターブで鳴ってしまい不自然になる）
-export function extendedChordTones(type) {
+// コードトーン編〔発見モード〕v1.13: type.chord（基本構成音）に、type.tensionsから毎回1個だけ
+// ランダムに選んだテンションを加えた構成音セットを返す（v1.12のStage 6では定義済み全テンションを
+// まとめて出題していたが、表示コード名〔例:「C7」〕が指す音数と実際の出題音数〔最大10音〕が
+// 一致しないコンセプト矛盾があったため、ジャズの「アベイラブルテンション」の考え方に基づき
+// 1個ランダム選択に変更した）。sus2は唯一の定義済みテンション9thが基本構成音2ndとピッチクラス
+// 衝突するため、テンション抽選自体を行わず常にテンションなしで返す。semitoneは生の値のまま保持
+// （_playChord()でルートMIDIに加算し、テンションを基準音より高いオクターブで鳴らすため）
+export function pickChordToneSet(typeId, type) {
   const seenPcs = new Set();
   const tones = [];
   const push = (semitone, name) => {
     const pc = ((semitone % 12) + 12) % 12;
-    if (seenPcs.has(pc)) return;
+    if (seenPcs.has(pc)) return false;
     seenPcs.add(pc);
     tones.push({ semitone, name });
+    return true;
   };
   type.chord.forEach(semitone => push(semitone, INTERVAL_NAMES[semitone] ?? String(semitone)));
-  Object.entries(type.tensions).forEach(([name, semitone]) => push(semitone, name));
-  return tones;
+
+  let tensionName = null;
+  const tensionEntries = Object.entries(type.tensions);
+  if (typeId !== 'sus2' && tensionEntries.length > 0) {
+    const [name, semitone] = tensionEntries[Math.floor(Math.random() * tensionEntries.length)];
+    if (push(semitone, name)) tensionName = name;
+  }
+  return { tones, tensionName };
 }
 
 // コードトーン編で使用予定

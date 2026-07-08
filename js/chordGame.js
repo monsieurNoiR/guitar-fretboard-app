@@ -4,7 +4,7 @@ import {
   calcDisplayRange,
   hasSolvableChordTones,
   rootPositionCandidates,
-  extendedChordTones,
+  pickChordToneSet,
   CHORD_TYPES,
   noteName,
   STRING_COUNT,
@@ -12,11 +12,12 @@ import {
 
 // Stage 4: ルート音を12音フルランダム化（インターバル編LV.4方式: 6/5/4弦 × 0/1オクターブ）。
 // Stage 5: 7th系8種類を復帰し、全10種類（CHORD_TYPESの全キー）でルート可変化に対応。
-// Stage 6: テンション対応。type.chord（基本構成音）に加え、music.jsのextendedChordTones()で
-// type.tensionsをオクターブ無視・ピッチクラスベースで統合した拡張構成音セットを出題する。
-// 全12rootPc × 全ルート候補位置（6/5/4弦×0/1oct）× 全10種類の拡張構成音セットの直積（7200通り）で
-// hasSolvableChordTones() が常にtrueになる（詰みゼロ）ことをNode上で全数検証済み
-// （dom7の10音・判定弦3本の組み合わせも含む）。
+// Stage 6→v1.13: テンション対応。type.chord（基本構成音）に加え、music.jsのpickChordToneSet()で
+// type.tensionsから毎回1個だけランダムに選んだテンションを加えた構成音セットを出題する
+// （v1.12時点は定義済み全テンションをまとめて出題していたが、コード名と出題音数が一致しない
+// コンセプト矛盾のため1個ランダム選択に変更。sus2はテンション抽選対象外）。
+// 全12rootPc × 全ルート候補位置（6/5/4弦×0/1oct）× 全10種類のテンション全パターンの直積で
+// hasSolvableChordTones() が常にtrueになる（詰みゼロ）ことをNode上で全数検証済み。
 // 判定弦カスタマイズ機能（v1.11.0）: 判定弦域はユーザー設定（`stringRange`、コンストラクタ引数）
 // に統合。ルート出現弦も同じ値を共有する（以前は別々の定数がたまたま一致していただけだった）。
 const CHORD_TYPE_IDS = ['maj', 'min', 'maj7', 'min7', 'dom7', 'dim7', 'm7b5', 'aug', 'sus2', 'sus4'];
@@ -96,16 +97,16 @@ export class ChordGame {
     // インターバル編からの遷移でオレンジのルート確定マーカーが残留しないようにクリア
     this._fb.clearConfirmedRoot();
 
-    // Game._nextQuestionと同型: ルートPC・ルートポジション・コードタイプをまとめて再抽選し、
-    // 表示窓・判定弦内に拡張構成音セット（基本構成音＋テンション）が収まる（＝詰みにならない）
-    // 組み合わせを探す
-    let rootPc, rootString, rootFret, rootMidi, typeId, type, tones;
+    // Game._nextQuestionと同型: ルートPC・ルートポジション・コードタイプ・テンション抽選を
+    // まとめて再抽選し、表示窓・判定弦内に構成音セット（基本構成音＋テンション最大1個）が
+    // 収まる（＝詰みにならない）組み合わせを探す
+    let rootPc, rootString, rootFret, rootMidi, typeId, type, tones, tensionName;
     let attempts = 0;
     do {
       rootPc = ROOT_PCS[Math.floor(Math.random() * ROOT_PCS.length)];
       typeId = CHORD_TYPE_IDS[Math.floor(Math.random() * CHORD_TYPE_IDS.length)];
       type   = CHORD_TYPES[typeId];
-      tones  = extendedChordTones(type);
+      ({ tones, tensionName } = pickChordToneSet(typeId, type));
       const pos = this._pickRootPosition(rootPc);
       rootString = pos.stringIdx;
       rootFret   = pos.fret;
@@ -121,7 +122,12 @@ export class ChordGame {
       name,
     }));
     this._remaining = new Set(this._chordTones.map(t => t.pc));
-    this._chordName = `${noteName(rootPc)} ${type.name}`;
+    // テンション名（例:「9th」）は末尾の「th」を除いた表記で括弧内に表示する（「9th」→「9」、
+    // 「b9」「#9」「b13」は元々「th」を含まないためそのまま）
+    const tensionLabel = tensionName
+      ? (tensionName.endsWith('th') ? tensionName.slice(0, -2) : tensionName)
+      : null;
+    this._chordName = `${noteName(rootPc)}${type.symbol}` + (tensionLabel ? `(${tensionLabel})` : '');
 
     const range = calcDisplayRange(rootFret);
     const maskStrings = new Set(
