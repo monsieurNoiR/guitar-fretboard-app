@@ -122,17 +122,23 @@ export class AudioEngine {
     });
   }
 
-  // 不正解フィードバック音: 固定音色（square）の低く短いブザー（下降グリッサンド）
+  // 不正解フィードバック音: 固定音色（square）の低く短いブザー（下降グリッサンド）。
+  // 周波数帯（420→260Hz）はギターの判定弦デフォルト（E2=82/A2=110/D3=147/G3=196Hz）と
+  // 重ならないよう意図的に離してある。ゲインは _createVoice と同型のアタック→サステイン→
+  // リリースの3段エンベロープにし、タップ音（playNote）の持続音量（this.volume*0.45）を
+  // 上回るサステインを持続時間の大半でキープする（ピーク直後に0.001まで一気に減衰させると、
+  // 持続音量の高いタップ音に埋もれて聞こえなくなる問題への対応、v1.16.2）
   playWrongBuzz() {
     this._ensureContext();
     const now = this._ctx.currentTime;
     const duration = 0.18;
 
-    const { osc, gain } = this._createFxVoice(160, 'square', now, duration);
-    osc.frequency.setValueAtTime(160, now);
-    osc.frequency.exponentialRampToValueAtTime(90, now + duration);
+    const { osc, gain } = this._createFxVoice(420, 'square', now, duration);
+    osc.frequency.setValueAtTime(420, now);
+    osc.frequency.exponentialRampToValueAtTime(260, now + duration);
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(this.volume * 0.5, now + 0.01);
+    gain.gain.linearRampToValueAtTime(this.volume * 0.95, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(this.volume * 0.65, now + 0.06);
     gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
   }
 

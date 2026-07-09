@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.16.2 — 2026-07-09
+
+### 不正解音（playWrongBuzz）が鳴らない不具合を修正
+- **症状**: 正解音（`playCorrectChime()`）は全プラットフォームで正常に鳴るが、不正解音（`playWrongBuzz()`）だけがiPhone Safari・Android Chrome・Mac Chromeいずれでも鳴らない
+- **原因調査**: `playWrongBuzz()`単体を`OfflineAudioContext`・実時間`AudioContext`（`ScriptProcessorNode`計装）の両方でレンダリングしたところ、`maxAbs≈0.33`（`playCorrectChime()`の`0.44`と同オーダー）の明確な信号が生成されており、`audio.js`のコード自体・`onWrong`の配線（`js/game.js`・`js/chordGame.js`・`js/arpeggioGame.js`・`js/app.js`、いずれも無欠落・無タイポ）にはバグがないことを確認。原因は音響設計上の**マスキング（音の埋もれ）**と判明:
+  1. **周波数帯の衝突**: 修正前のブザー（160→90Hzスイープ）は、判定弦デフォルト（6/5/4弦開放: E2=82.4Hz・A2=110Hz・D3=146.8Hz、`js/music.js`の`midiToFreq()`で算出）とほぼ完全に重なっていた
+  2. **タップ音と同一波形**: タップ音のデフォルト波形（`square`）とブザーの波形（`square`固定）が同一で、近い周波数と相まって単一の音に聴覚的に融合しやすい
+  3. **エンベロープの減衰が急峻すぎる**: `js/game.js`等の`handleTap()`は必ずタップ音（`playNote()`、持続音量`this.volume*0.45`）を先に再生してからブザーを鳴らすが、修正前のブザーはピーク直後に`exponentialRampToValueAtTime(0.001, duration)`で一気に減衰するため、180msの持続時間の大半がタップ音の持続音量を下回っていた
+  - Goertzelアルゴリズムでタップ音（A2=110Hz）とブザーを合成レンダリングし、ブザーの瞬間周波数を追跡しながらエネルギーを実測することで、上記の埋もれを定量的に確認した
+- **修正**（`js/audio.js`の`playWrongBuzz()`のみ、`_createFxVoice()`・`playCorrectChime()`は無変更）:
+  - 周波数スイープを`160→90Hz`から`420→260Hz`に引き上げ、判定弦デフォルトの周波数帯から明確に分離
+  - ゲインエンベロープを`_createVoice()`と同型のアタック→サステイン→リリースの3段構成に変更（`this.volume*0.95`のピーク→`this.volume*0.65`のサステイン→`0.001`のリリース）。ピーク直後に急減衰させず、タップ音の持続音量を上回る音量を音の立ち上がり50〜80ms程度キープすることで、埋もれを解消
+- **検証**: 修正後、タップ音（A2=110Hz）とブザーを合成レンダリングし、ブザーの瞬間周波数でのGoertzelエネルギーが単独再生時とほぼ同水準（例: t=0.02sで合成時0.308 vs 単独時0.300）であることを確認（タップ音の存在がブザーの可聴性にほぼ影響しなくなった）。`playCorrectChime()`の単独レンダリングmaxAbsが修正前と完全に一致（`0.4492`）することを確認し無回帰を確認。`js/game.js`・`js/chordGame.js`・`js/arpeggioGame.js`・`js/app.js`・`js/feedbackFx.js`・`css/style.css`は`git diff`で無変更を確認（`js/audio.js`のみの修正で完結）
+- **実機確認**: claude-in-chromeで実際の`Game`インスタンス経由（`handleTap()`→`onWrong`→`playWrongBuzz()`）で不正解タップを発火し、例外なし・AudioContext状態`running`・画面演出（✗のSVG表示）も正常なことを確認
+- iPhone Safari・Android Chromeでの実機確認はユーザー側で別途実施予定
+- `sw.js` を `fretboard-v31` に更新
+
+---
+
 ## v1.16.1 — 2026-07-09
 
 ### 正解・不正解演出のシンボルをテキスト文字からSVG描画に変更（表示不具合修正）
