@@ -73,6 +73,20 @@
 
     <p class="judge-string-summary" id="judge-string-summary">6弦〜4弦（低音側3本）を使用</p>
 
+    <div class="menu-row judge-chord-settings">
+      <span>出題コード範囲</span>
+      <div class="wave-btns" id="chord-preset-btns">
+        <button class="wave-btn" data-range="false" data-tension="false">トライアドのみ</button>
+        <button class="wave-btn" data-range="true"  data-tension="false">7th系まで</button>
+        <button class="wave-btn" data-range="true"  data-tension="true">全部</button>
+      </div>
+    </div>
+
+    <div class="menu-row menu-row-inline judge-chord-settings" id="tension-toggle-row">
+      <span>テンション</span>
+      <button id="btn-tension" class="btn-text" data-enabled="false">OFF</button>
+    </div>
+
     <button id="btn-judge-confirm" class="btn-primary">この設定で練習をはじめる</button>
   </main>
 </div>
@@ -166,7 +180,7 @@
     </div>
 
     <div class="menu-row">
-      <span class="app-version">v1.14.0</span>
+      <span class="app-version">v1.15.0</span>
     </div>
   </div>
 </div>

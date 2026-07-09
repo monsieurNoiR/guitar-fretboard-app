@@ -13,6 +13,11 @@ let hintEnabled         = true;
 // コードトーン編（発見・アルペジオ共通）の判定弦域。0=6弦〜5=1弦。ルート出現弦も同じ値を共有する
 let judgeStringStart    = 0;
 let judgeStringCount    = 3;
+// コードトーン編（発見・アルペジオ共通）の出題コード範囲設定（v1.15.0）。
+// chordTypeRangeAll: false=トライアドのみ（maj/min）/ true=全10種類
+// tensionEnabled: テンション出題の有無（発見モードのみ意味を持つ。アルペジオは常にテンションなし）
+let chordTypeRangeAll   = true;
+let tensionEnabled      = true;
 // 判定弦選択画面から「この設定で練習をはじめる」を押した時にどちらのモードを開始するか
 let pendingPracticeMode = null; // 'chord' | 'arpeggio'
 const audio             = new AudioEngine();
@@ -48,6 +53,9 @@ const judgeRangeStart  = document.getElementById('judge-range-start');
 const judgeRangeEnd    = document.getElementById('judge-range-end');
 const judgeSliderFill  = document.getElementById('judge-slider-fill');
 const elJudgeStringSummary = document.getElementById('judge-string-summary');
+const chordPresetBtns  = document.querySelectorAll('#chord-preset-btns .wave-btn');
+const tensionToggleRow = document.getElementById('tension-toggle-row');
+const btnTension       = document.getElementById('btn-tension');
 
 // ── ゲーム画面 ──
 const screenGame   = document.getElementById('screen-game');
@@ -181,6 +189,8 @@ function startChordPractice() {
       audio,
       fretboard,
       stringRange: computeStringRange(),
+      chordTypeRangeAll,
+      tensionEnabled,
       onProgress({ chordName, progressText }) {
         elIntervalName.textContent = chordName;
         elRootName.textContent     = progressText;
@@ -213,6 +223,7 @@ function startChordArpeggio() {
       fretboard,
       hintEnabled,
       stringRange: computeStringRange(),
+      chordTypeRangeAll,
       onProgress({ chordName, progressText }) {
         elIntervalName.textContent = chordName;
         elRootName.textContent     = progressText;
@@ -376,7 +387,24 @@ function openJudgeStringScreen(mode) {
   pendingPracticeMode = mode;
   menuPanel.classList.remove('open');
   syncJudgeSliderUI();
+  syncChordSettingsUI();
+  // テンションはアルペジオモード非対応のため、発見モード時のみトグル行を表示する
+  tensionToggleRow.classList.toggle('hidden', mode === 'arpeggio');
   showScreen('screen-judge-strings');
+}
+
+// 現在の chordTypeRangeAll/tensionEnabled をプリセットボタン・トグルの表示に反映する。
+// 一致するプリセットがない組み合わせ（例: トライアドのみ+テンションON）は全ボタン非activeの
+// 「カスタム」状態になる（.wave-btnの「一致するボタンにだけactive」パターンを流用）
+function syncChordSettingsUI() {
+  btnTension.dataset.enabled = String(tensionEnabled);
+  btnTension.textContent = tensionEnabled ? 'ON' : 'OFF';
+
+  chordPresetBtns.forEach(btn => {
+    const matches = (btn.dataset.range === String(chordTypeRangeAll)) &&
+                    (btn.dataset.tension === String(tensionEnabled));
+    btn.classList.toggle('active', matches);
+  });
 }
 
 // 現在の judgeStringStart/judgeStringCount をスライダーのつまみ位置に反映する
@@ -427,6 +455,22 @@ function applyJudgeRange(movedSide) {
 
 judgeRangeStart.addEventListener('input', () => applyJudgeRange('start'));
 judgeRangeEnd.addEventListener('input',   () => applyJudgeRange('end'));
+
+// 出題コード範囲プリセットボタン: data-range/data-tensionから2軸を一括セットする
+chordPresetBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    chordTypeRangeAll = btn.dataset.range === 'true';
+    tensionEnabled    = btn.dataset.tension === 'true';
+    syncChordSettingsUI();
+  });
+});
+
+// テンションON/OFFトグル: 手動操作でプリセットと不一致になれば syncChordSettingsUI() が
+// 自動的に全ボタン非active（カスタム状態）にする
+btnTension.addEventListener('click', () => {
+  tensionEnabled = !tensionEnabled;
+  syncChordSettingsUI();
+});
 
 btnJudgeBack.addEventListener('click', () => showScreen('screen-home'));
 btnJudgeConfirm.addEventListener('click', () => {

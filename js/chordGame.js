@@ -6,6 +6,8 @@ import {
   rootPositionCandidates,
   pickChordToneSet,
   CHORD_TYPES,
+  TRIAD_TYPE_IDS,
+  ALL_TYPE_IDS,
   noteName,
   STRING_COUNT,
 } from './music.js';
@@ -20,7 +22,8 @@ import {
 // hasSolvableChordTones() が常にtrueになる（詰みゼロ）ことをNode上で全数検証済み。
 // 判定弦カスタマイズ機能（v1.11.0）: 判定弦域はユーザー設定（`stringRange`、コンストラクタ引数）
 // に統合。ルート出現弦も同じ値を共有する（以前は別々の定数がたまたま一致していただけだった）。
-const CHORD_TYPE_IDS = ['maj', 'min', 'maj7', 'min7', 'dom7', 'dim7', 'm7b5', 'aug', 'sus2', 'sus4'];
+// v1.15.0: 出題コード範囲設定に対応。CHORD_TYPE_IDSのハードコード定数は廃止し、コンストラクタ
+// 引数`chordTypeRangeAll`でmusic.jsのTRIAD_TYPE_IDS/ALL_TYPE_IDSどちらを使うか切り替える。
 const ROOT_PCS      = [0,1,2,3,4,5,6,7,8,9,10,11];
 const ROOT_OCTAVES  = [0, 1];
 const DEFAULT_STRING_RANGE = [0, 1, 2]; // 6/5/4弦（stringRange未指定時のフォールバック）
@@ -33,11 +36,13 @@ const MAX_QUESTION_RETRY = 30;
 const NEXT_CHORD_DELAY = 800;
 
 export class ChordGame {
-  constructor({ audio, fretboard, stringRange = DEFAULT_STRING_RANGE, onProgress }) {
-    this._audio       = audio;
-    this._fb          = fretboard;
-    this._stringRange = stringRange;
-    this._onProgress  = onProgress;
+  constructor({ audio, fretboard, stringRange = DEFAULT_STRING_RANGE, chordTypeRangeAll = true, tensionEnabled = true, onProgress }) {
+    this._audio          = audio;
+    this._fb             = fretboard;
+    this._stringRange    = stringRange;
+    this._typeIds        = chordTypeRangeAll ? ALL_TYPE_IDS : TRIAD_TYPE_IDS;
+    this._tensionEnabled = tensionEnabled;
+    this._onProgress     = onProgress;
 
     this._fb.onTap(({ stringIdx, fret }) => this.handleTap({ stringIdx, fret }));
 
@@ -104,9 +109,9 @@ export class ChordGame {
     let attempts = 0;
     do {
       rootPc = ROOT_PCS[Math.floor(Math.random() * ROOT_PCS.length)];
-      typeId = CHORD_TYPE_IDS[Math.floor(Math.random() * CHORD_TYPE_IDS.length)];
+      typeId = this._typeIds[Math.floor(Math.random() * this._typeIds.length)];
       type   = CHORD_TYPES[typeId];
-      ({ tones, tensionName } = pickChordToneSet(typeId, type));
+      ({ tones, tensionName } = pickChordToneSet(typeId, type, this._tensionEnabled));
       const pos = this._pickRootPosition(rootPc);
       rootString = pos.stringIdx;
       rootFret   = pos.fret;

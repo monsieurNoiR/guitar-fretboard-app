@@ -4,6 +4,8 @@ import {
   hasSolvableChordTones,
   rootPositionCandidates,
   CHORD_TYPES,
+  TRIAD_TYPE_IDS,
+  ALL_TYPE_IDS,
   noteName,
   STRING_COUNT,
   MAX_FRET,
@@ -11,7 +13,9 @@ import {
 
 // v1.14.0: 発見モード（chordGame.js）Stage 5と同様、全10種類のコードタイプに対応
 // （maj, min, maj7, min7, dom7, dim7, m7b5, aug, sus2, sus4）。テンションは対象外
-const CHORD_TYPE_IDS = ['maj', 'min', 'maj7', 'min7', 'dom7', 'dim7', 'm7b5', 'aug', 'sus2', 'sus4'];
+// v1.15.0: 出題コード範囲設定に対応。CHORD_TYPE_IDSのハードコード定数は廃止し、コンストラクタ
+// 引数`chordTypeRangeAll`でmusic.jsのTRIAD_TYPE_IDS/ALL_TYPE_IDSどちらを使うか切り替える。
+// アルペジオモードはテンション非対応のため変更なし
 // ルート音を12音フルランダム化（インターバル編LV.4方式: 6/5/4弦 × 0/1オクターブ）
 const ROOT_PCS      = [0,1,2,3,4,5,6,7,8,9,10,11];
 const ROOT_OCTAVES  = [0, 1];
@@ -38,11 +42,12 @@ const HINT_DELAY_MIN = 5000;
 const HINT_DELAY_MAX = 7000;
 
 export class ArpeggioGame {
-  constructor({ audio, fretboard, hintEnabled = true, stringRange = DEFAULT_STRING_RANGE, onProgress }) {
+  constructor({ audio, fretboard, hintEnabled = true, stringRange = DEFAULT_STRING_RANGE, chordTypeRangeAll = true, onProgress }) {
     this._audio       = audio;
     this._fb          = fretboard;
     this._hintEnabled = hintEnabled;
     this._stringRange = stringRange;
+    this._typeIds     = chordTypeRangeAll ? ALL_TYPE_IDS : TRIAD_TYPE_IDS;
     this._onProgress  = onProgress;
 
     this._fb.onTap(({ stringIdx, fret }) => this.handleTap({ stringIdx, fret }));
@@ -121,7 +126,7 @@ export class ArpeggioGame {
     let attempts = 0;
     do {
       rootPc = ROOT_PCS[Math.floor(Math.random() * ROOT_PCS.length)];
-      typeId = CHORD_TYPE_IDS[Math.floor(Math.random() * CHORD_TYPE_IDS.length)];
+      typeId = this._typeIds[Math.floor(Math.random() * this._typeIds.length)];
       type   = CHORD_TYPES[typeId];
       const pos = this._pickRootPosition(rootPc);
       rootString = pos.stringIdx;

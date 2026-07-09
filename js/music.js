@@ -112,6 +112,12 @@ export const CHORD_TYPES = {
   },
 };
 
+// コードトーン編（発見モード・アルペジオモード共通）v1.15.0: 出題コード範囲設定で使用する
+// コードタイプIDの共有定数。chordGame.js・arpeggioGame.jsにハードコード重複していた
+// CHORD_TYPE_IDSをここに一元化した
+export const TRIAD_TYPE_IDS = ['maj', 'min'];
+export const ALL_TYPE_IDS   = Object.keys(CHORD_TYPES);
+
 // ── 度数名（コードトーン: 0〜11半音）─────────────────────────
 export const INTERVAL_NAMES = {
   0:  'R',
@@ -308,8 +314,10 @@ export function hasSolvableChordTones(rootPc, rootFret, judgeStrings, semitones)
 // 一致しないコンセプト矛盾があったため、ジャズの「アベイラブルテンション」の考え方に基づき
 // 1個ランダム選択に変更した）。sus2は唯一の定義済みテンション9thが基本構成音2ndとピッチクラス
 // 衝突するため、テンション抽選自体を行わず常にテンションなしで返す。semitoneは生の値のまま保持
-// （_playChord()でルートMIDIに加算し、テンションを基準音より高いオクターブで鳴らすため）
-export function pickChordToneSet(typeId, type) {
+// （_playChord()でルートMIDIに加算し、テンションを基準音より高いオクターブで鳴らすため）。
+// tensionEnabled（v1.15.0）: falseの場合はテンション抽選自体を行わず基本構成音のみ返す
+// （出題コード範囲設定の「テンションOFF」用。デフォルトtrueで既存呼び出し元との後方互換を保つ）
+export function pickChordToneSet(typeId, type, tensionEnabled = true) {
   const seenPcs = new Set();
   const tones = [];
   const push = (semitone, name) => {
@@ -323,7 +331,7 @@ export function pickChordToneSet(typeId, type) {
 
   let tensionName = null;
   const tensionEntries = Object.entries(type.tensions);
-  if (typeId !== 'sus2' && tensionEntries.length > 0) {
+  if (tensionEnabled && typeId !== 'sus2' && tensionEntries.length > 0) {
     const [name, semitone] = tensionEntries[Math.floor(Math.random() * tensionEntries.length)];
     if (push(semitone, name)) tensionName = name;
   }
