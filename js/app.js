@@ -412,9 +412,13 @@ function syncChordSettingsUI() {
   btnTension.dataset.enabled = String(tensionEnabled);
   btnTension.textContent = tensionEnabled ? 'ON' : 'OFF';
 
+  // アルペジオモードはテンション非対応のため、chordTypeRangeAllの一致のみで判定する
+  // （「7th系まで」「全部」はアルペジオでは機能的に同一のため、両方activeになり得る）
+  const isArpeggio = pendingPracticeMode === 'arpeggio';
   chordPresetBtns.forEach(btn => {
-    const matches = (btn.dataset.range === String(chordTypeRangeAll)) &&
-                    (btn.dataset.tension === String(tensionEnabled));
+    const matches = isArpeggio
+      ? (btn.dataset.range === String(chordTypeRangeAll))
+      : (btn.dataset.range === String(chordTypeRangeAll)) && (btn.dataset.tension === String(tensionEnabled));
     btn.classList.toggle('active', matches);
   });
 }
@@ -468,11 +472,16 @@ function applyJudgeRange(movedSide) {
 judgeRangeStart.addEventListener('input', () => applyJudgeRange('start'));
 judgeRangeEnd.addEventListener('input',   () => applyJudgeRange('end'));
 
-// 出題コード範囲プリセットボタン: data-range/data-tensionから2軸を一括セットする
+// 出題コード範囲プリセットボタン: data-range/data-tensionから2軸を一括セットする。
+// アルペジオモードはテンション非対応のため、発見モード用のtensionEnabledには触れない
+// （MINOR-1対応: アルペジオでプリセットを押すたびに裏でtensionEnabledが書き換わり、
+// 発見モードに戻った際にテンション設定が意図せず変わってしまう不具合の修正）
 chordPresetBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     chordTypeRangeAll = btn.dataset.range === 'true';
-    tensionEnabled    = btn.dataset.tension === 'true';
+    if (pendingPracticeMode !== 'arpeggio') {
+      tensionEnabled = btn.dataset.tension === 'true';
+    }
     syncChordSettingsUI();
   });
 });

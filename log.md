@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.16.3 — 2026-07-09
+
+### MINOR-1・MINOR-2 修正（v1.15.0〜v1.16.2のOpusレビュー指摘事項）
+- **MINOR-1: アルペジオモードでのプリセット操作が発見モード用のテンション設定を上書きする不具合を修正**
+  - **症状**: `js/app.js`の出題コード範囲プリセットボタン（「7th系まで」「全部」）のクリックハンドラが、モードを問わず常に`chordTypeRangeAll`と`tensionEnabled`の両方をセットしていたため、アルペジオモード（テンション非対応・トグル行は`hidden`で非表示）でプリセットを押すと、裏で発見モード用の`tensionEnabled`が意図せず書き換わっていた
+  - **修正**: クリックハンドラで`pendingPracticeMode === 'arpeggio'`のときは`tensionEnabled`に触れず`chordTypeRangeAll`のみセットするよう変更。あわせて`syncChordSettingsUI()`のプリセットボタンactive判定も、アルペジオモードでは`chordTypeRangeAll`の一致のみで行うよう変更（アルペジオでは「7th系まで」「全部」が機能的に同一のため、`chordTypeRangeAll===true`の間は両ボタンが同時にactive表示になり得るが、これは「クリックしたボタンと異なるボタンが点灯する」より望ましい表示としてユーザー確認済み）
+  - **確認**: 発見モードでテンションON・「全部」選択の状態からアルペジオモードへ移動し「7th系まで」→「全部」の順にクリックした後、発見モードに戻ってテンション設定（ON）が保持されていることを実機（claude-in-chrome）で確認。逆に発見モードでテンションを変更した後アルペジオへ移動しても画面表示に支障がないことも確認
+- **MINOR-2: 発見モードでコードクリア直後（NEXT_CHORD_DELAY=800ms待機中）のタップで誤ってonWrongが発火する不具合を修正**
+  - **症状**: `js/chordGame.js`の`handleTap()`は判定弦・`_chordTones.length`のみをガードしており、全構成音クリア後の800ms待機中も`_chordTones`はクリアされないままのため、この間にタップすると通常の判定処理が走り、構成音でない位置をタップすると`onWrong`（ブザー＋✗演出）が誤発火していた
+  - **修正**: `js/arpeggioGame.js`の`_answered`フラグと同じパターンを`ChordGame`に追加。全構成音クリア時（`onCorrect`発火・`_nextTimer`セットと同じタイミング）に`this._answered = true`、`_nextChord()`冒頭で`false`にリセットし、`handleTap()`冒頭で`this._answered`をガード条件に追加
+  - **確認**: Nodeモックで、全構成音クリア直後（`_answered=true`の間）に構成音でない位置・構成音の位置いずれをタップしても`onWrong`/`onCorrect`が発火しないこと、`_nextChord()`後は通常通り判定が機能することを確認
+- **回帰確認**: `git diff`で変更が`js/app.js`のプリセットクリックハンドラ・`syncChordSettingsUI()`と`js/chordGame.js`の`_answered`関連箇所のみに限定されていることを確認。`js/arpeggioGame.js`・`js/game.js`は無変更
+- `sw.js` を `fretboard-v32` に更新
+
+---
+
 ## v1.16.2 — 2026-07-09
 
 ### 不正解音（playWrongBuzz）が鳴らない不具合を修正

@@ -53,6 +53,9 @@ export class ChordGame {
     this._chordName  = '';
     this._chordTones = [];      // [{ semitone, pc, name }]
     this._remaining  = new Set(); // 未発見の pc 集合
+    // 全構成音クリア後、次のコード出題までの待機中（NEXT_CHORD_DELAY）はタップを無視する
+    // （ArpeggioGame._answeredと同じパターン、MINOR-2対応）
+    this._answered   = false;
   }
 
   // ── 公開API ──────────────────────────────────────────────
@@ -72,7 +75,7 @@ export class ChordGame {
   }
 
   handleTap({ stringIdx, fret }) {
-    if (!this._stringRange.includes(stringIdx)) return;
+    if (!this._stringRange.includes(stringIdx) || this._answered) return;
     if (this._chordTones.length === 0) return;
 
     const pc   = getPitchClass(stringIdx, fret);
@@ -98,6 +101,7 @@ export class ChordGame {
       if (this._remaining.size === 0) {
         // 演出用の大きな○は個々の正解タップごとではなく、全構成音を見つけ終えた瞬間にのみ発火
         this._onCorrect?.();
+        this._answered = true;
         this._nextTimer = setTimeout(() => this._nextChord(), NEXT_CHORD_DELAY);
       }
     }
@@ -107,6 +111,7 @@ export class ChordGame {
 
   _nextChord() {
     clearTimeout(this._nextTimer);
+    this._answered = false;
     this._fb.clearFeedback();
     // インターバル編からの遷移でオレンジのルート確定マーカーが残留しないようにクリア
     this._fb.clearConfirmedRoot();
