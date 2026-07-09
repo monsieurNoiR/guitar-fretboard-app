@@ -90,6 +90,7 @@ export class Game {
         });
       } else {
         this._fb.showFeedback(stringIdx, fret, false);
+        this._onWrong?.();
       }
     } else {
       // 度数フェーズ

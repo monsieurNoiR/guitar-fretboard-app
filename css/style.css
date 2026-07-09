@@ -292,6 +292,62 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
   border-radius: var(--radius);
 }
 
+/* 正解・不正解フィードバック演出（大きな○/✗オーバーレイ）
+   pointer-events: none で操作を一切ブロックしない。z-indexはハンバーガーメニュー(100)・
+   縦持ち警告(1000)より下に置き、それらの表示中は演出が邪魔をしないようにする */
+.fx-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.fx-symbol {
+  font-size: clamp(80px, 20vw, 180px);
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0;
+}
+
+.fx-overlay.fx-correct .fx-symbol {
+  color: #4caf50;
+  animation: fx-correct-anim 0.5s ease;
+}
+
+.fx-overlay.fx-wrong .fx-symbol {
+  color: #f44336;
+  animation: fx-wrong-anim 0.25s ease;
+}
+
+.fx-overlay.fx-wrong {
+  animation: fx-shake 0.25s ease;
+}
+
+@keyframes fx-correct-anim {
+  0%   { opacity: 0; transform: scale(0.85); }
+  30%  { opacity: 1; transform: scale(1); }
+  70%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.05); }
+}
+
+@keyframes fx-wrong-anim {
+  0%   { opacity: 0; transform: scale(1.1); }
+  15%  { opacity: 1; transform: scale(1); }
+  80%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes fx-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-10px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(4px); }
+}
+
 /* フッター（下） */
 .game-footer {
   flex-shrink: 0;

@@ -36,13 +36,15 @@ const MAX_QUESTION_RETRY = 30;
 const NEXT_CHORD_DELAY = 800;
 
 export class ChordGame {
-  constructor({ audio, fretboard, stringRange = DEFAULT_STRING_RANGE, chordTypeRangeAll = true, tensionEnabled = true, onProgress }) {
+  constructor({ audio, fretboard, stringRange = DEFAULT_STRING_RANGE, chordTypeRangeAll = true, tensionEnabled = true, onProgress, onCorrect, onWrong }) {
     this._audio          = audio;
     this._fb             = fretboard;
     this._stringRange    = stringRange;
     this._typeIds        = chordTypeRangeAll ? ALL_TYPE_IDS : TRIAD_TYPE_IDS;
     this._tensionEnabled = tensionEnabled;
     this._onProgress     = onProgress;
+    this._onCorrect      = onCorrect;
+    this._onWrong        = onWrong;
 
     this._fb.onTap(({ stringIdx, fret }) => this.handleTap({ stringIdx, fret }));
 
@@ -85,10 +87,17 @@ export class ChordGame {
     const feedbackState = !isChordTone ? false : (isNewlyFound ? true : 'neutral');
     this._fb.showFeedback(stringIdx, fret, feedbackState);
 
+    if (!isChordTone) {
+      // 真の不正解（構成音そのものではないタップ）。既発見音の再タップ（neutral）は含めない
+      this._onWrong?.();
+    }
+
     if (isNewlyFound) {
       this._remaining.delete(pc);
       this._emitProgress();
       if (this._remaining.size === 0) {
+        // 演出用の大きな○は個々の正解タップごとではなく、全構成音を見つけ終えた瞬間にのみ発火
+        this._onCorrect?.();
         this._nextTimer = setTimeout(() => this._nextChord(), NEXT_CHORD_DELAY);
       }
     }

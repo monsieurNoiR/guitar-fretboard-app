@@ -1,6 +1,7 @@
 import { INTERVAL_LEVELS, PRACTICE_LEVEL, STRING_COUNT } from './music.js';
 import { AudioEngine }  from './audio.js';
 import { Fretboard }    from './fretboard.js';
+import { FeedbackFx }   from './feedbackFx.js';
 import { Game }         from './game.js';
 import { ChordGame }    from './chordGame.js';
 import { ArpeggioGame } from './arpeggioGame.js';
@@ -86,6 +87,14 @@ const waveButtons  = document.querySelectorAll('#waveform-btns .wave-btn');
 // ── 指板 ──────────────────────────────────────────────────
 const fretboard = new Fretboard(canvas);
 
+// ── 正解・不正解フィードバック演出（音＋画面演出、v1.16.0）────────
+const fxOverlay = document.getElementById('fx-overlay');
+const fxSymbol  = document.getElementById('fx-symbol');
+const feedbackFx = new FeedbackFx(fxOverlay, fxSymbol);
+
+function onCorrectFx() { feedbackFx.showCorrect(); audio.playCorrectChime(); }
+function onWrongFx()   { feedbackFx.showWrong();   audio.playWrongBuzz(); }
+
 // ── 画面遷移 ──────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
@@ -156,8 +165,8 @@ function startGame(level) {
         }
         if (qNum !== null) elQNum.textContent = `${qNum} / ${total}`;
       },
-      onCorrect() {},
-      onWrong() {},
+      onCorrect: onCorrectFx,
+      onWrong:   onWrongFx,
       onComplete(results) {
         showResult(results);
       },
@@ -195,6 +204,8 @@ function startChordPractice() {
         elIntervalName.textContent = chordName;
         elRootName.textContent     = progressText;
       },
+      onCorrect: onCorrectFx,
+      onWrong:   onWrongFx,
     });
 
     currentGame.start();
@@ -228,6 +239,8 @@ function startChordArpeggio() {
         elIntervalName.textContent = chordName;
         elRootName.textContent     = progressText;
       },
+      onCorrect: onCorrectFx,
+      onWrong:   onWrongFx,
     });
 
     currentGame.start();

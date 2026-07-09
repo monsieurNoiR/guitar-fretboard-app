@@ -28,7 +28,8 @@ js/
   app.js        エントリポイント・状態管理・画面遷移・イベント配線
   music.js      音楽理論・ピッチクラス・コードデータ・LV設定
   fretboard.js  Canvas指板描画・タップ判定（Fretboardクラス）
-  audio.js      Web Audio API音再生（AudioEngineクラス。単音playNote/コードpolyphonic再生playChord）
+  audio.js      Web Audio API音再生（AudioEngineクラス。単音playNote/コードpolyphonic再生playChord/正誤フィードバック音playCorrectChime・playWrongBuzz）
+  feedbackFx.js 正解・不正解の画面演出専属（FeedbackFxクラス、大きな○/✗オーバーレイ、v1.16.0）
   game.js       インターバル編ゲームロジック・問題生成・判定（Gameクラス）
   chordGame.js  コードトーン編〔発見モード〕ゲームロジック（ChordGameクラス、Stage 1）
   arpeggioGame.js コードトーン編〔アルペジオモード〕ゲームロジック（ArpeggioGameクラス、Stage 3）
@@ -177,7 +178,30 @@ server.js       Node.js HTTPSサーバー（開発用）
   - **アルペジオモードの一発勝負化**: 別途の課題として引き続き保留
   - インターバル編（`js/game.js`）は今回のスコープ外につき無変更
 
+### 正解・不正解フィードバック演出（v1.16.0、全モード共通）
+- **目的**: 正誤の手応えが指板上の色フィードバック（緑/赤/青）のみで、特に不正解時に「間違えた」ことが確実に伝わらないという指摘があった。音（正解＝明るいチャイム、不正解＝低いブザー）と画面演出（大きな○/✗オーバーレイ）を全モード（インターバル編・発見モード・アルペジオモード）共通で追加
+- **実装前の設計判断（事前にユーザー確認済み。仕様書の記述と実装の齟齬をPlan modeで解消）**:
+  - **アルペジオモードの完了判定**: 当初の仕様書は「1タップ＝1回の正誤判定なので、そのタップがクリアに相当する」としていたが、アルペジオモードは実際には「1コード＝複数音を順番にタップ」する構造（`_phaseIndex`によるフェーズ管理、[[コードトーン編〔アルペジオモード〕Stage 2〜4]]参照）のため、この解釈だと正解タップのたびに毎回大きな○が出てしまい「1問クリア時のみ演出」という原則と矛盾する。発見モードと同じ「全音正解時のみ大きな○」に統一する方針でユーザー確認済み
+  - **発見モードの`neutral`（既発見音の再タップ、青色）**: 音・演出とも出さない（既存の青色フィードバックのみ）。正しい音だが「不正解」扱いにするとプレイヤーが混乱するため
+  - **インターバル編のRootタップ正解**（フェーズ1→2遷移）: 大きな○は出さない。1問＝Root+度数の全体とみなし、大きな○は最終的な度数タップ正解時のみ
+  - **不正解**: 全モード・全ての不正解タップで毎回発火。インターバル編のRootフェーズ不正解（従来`onWrong`コールバック自体が呼ばれていなかった唯一の既存分岐）もこの改修で対象に追加
+  - **効果音の音色**: ハンバーガーメニューの波形設定（sine/triangle/sawtooth/square）とは独立した固定音色（正解=sine系、不正解=square系）。波形設定に従わせると、特にsine選択時に正解/不正解の聞き分けが弱くなる懸念があったため
+- **アーキテクチャ**: 既存の「1クラス1責務」の慣例（`AudioEngine`=音、`Fretboard`=指板Canvas）を踏襲し、新規`js/feedbackFx.js`に`FeedbackFx`クラス（画面演出専属、DOM操作のみで判定ロジックは一切持たない）を追加。ゲームロジック側（`Game`/`ChordGame`/`ArpeggioGame`）は判定結果に応じて`onCorrect`/`onWrong`コールバックを呼ぶだけで、実際の音・演出の実装詳細は知らない（既存の`onQuestion`/`onProgress`と同じコールバック方式）
+- **`js/audio.js`**: `AudioEngine`に`playCorrectChime()`（sine系2音チャイム）・`playWrongBuzz()`（square系の下降グリッサンドブザー）を追加。両方とも`_activeVoice`/`_chordVoices`（既存の単音・コード再生の状態管理）とは独立した自前のoscillator/gainを都度生成する内部ヘルパー`_createFxVoice()`を使い、既存の音符再生と一切干渉しない
+- **ゲームロジック側の変更点**（判定基準自体は無変更、コールバック発火の追加のみ）:
+  - `js/game.js`: `handleTap()`のRootフェーズ不正解の分岐に`this._onWrong?.();`を追加（唯一の既存分岐への追加）
+  - `js/chordGame.js`: コンストラクタに`onCorrect`/`onWrong`を追加。`!isChordTone`（真の不正解）→`onWrong`、`isNewlyFound && this._remaining.size === 0`（削除後に全構成音クリア）→`onCorrect`。neutralケースはどちらも呼ばない
+  - `js/arpeggioGame.js`: コンストラクタに`onCorrect`/`onWrong`を追加。`!hit`→`onWrong`（毎回）、`hit && this._phaseIndex >= this._sequence.length`（インクリメント後、シーケンス全体を完了した瞬間）→`onCorrect`。途中の正解タップは何も呼ばない
+- **`js/app.js`**: `feedbackFx`（`FeedbackFx`インスタンス）と`onCorrectFx()`/`onWrongFx()`ヘルパー（それぞれ画面演出＋音を同時に発火）を追加し、`startGame()`/`startChordPractice()`/`startChordArpeggio()`の3箇所で各ゲームクラスの`onCorrect`/`onWrong`に配線
+- **UI**: `index.html`の`#screen-game`内、`.canvas-wrap`直後に`#fx-overlay`（`position: fixed; inset: 0; pointer-events: none;`）を追加。`z-index`は`.menu-panel`（100）・`.portrait-overlay`（1000）より下（50）に設定し、メニュー表示中やポートレート警告表示中は演出が邪魔をしない。○は0.5秒のふわっとしたフェード（`COLOR.correct`の緑）、✗は0.2〜0.3秒の短く鋭い出方＋画面シェイク（`COLOR.wrong`の赤）。`pointer-events: none`により演出表示中も指板タップ操作を一切ブロックしない（「不正解時に指板が一瞬隠れる」という意図された演出効果と、操作継続性の両立を、CSS設計だけで両立できた）
+- **Nodeモック検証で判明した注意点**: `ChordGame`/`ArpeggioGame`はコード完了後、実際の`setTimeout`（`NEXT_CHORD_DELAY`）で次のコードへ遷移する。モック検証スクリプトでループ内で複数コードを連続テストする際、この実タイマーを待たずに次のトライアルへ進むと`game._chordTones`/`game._sequence`が古いコード（既に`_remaining`が空・`_phaseIndex`が末尾）のまま参照されてしまい、`onCorrect`が発火しない見かけ上の不具合として現れる。テストコード側で`clearTimeout(game._nextTimer); game._nextChord();`のように明示的に次コードへ進めることで解消した（アプリ本体のバグではなくテスト手法の注意点）
+- **Nodeモック検証**: `ChordGame`（300コード）・`ArpeggioGame`（300コード）・`Game`（Rootフェーズ）で、`onCorrect`/`onWrong`が上記の設計判断どおりのタイミングで発火することを確認（発見モード=全構成音クリア時のみ・neutralではonWrong不発火、アルペジオモード=シーケンス完了時のみ・途中タップでは不発火、インターバル編=Rootフェーズ不正解でもonWrong発火・Root正解ではonCorrect不発火）
+- **実機確認**: claude-in-chromeで3モードとも、実際のDOM（`#fx-overlay`）・`AudioEngine`・`FeedbackFx`に接続した並列ゲームインスタンスを起動し、`handleTap()`を直接呼び出して演出タイミングをスクリーンショットで確認（Canvas座標計算のズレを避けるため、上記「注意点」セクションの推奨手法どおりモジュール直接呼び出しで検証。コンソールエラーなし）
+- **今回のスコープ外**: ハプティクス（振動フィードバック）は既存の保留リストの将来機能のため対象外
+
 ## 現在の状態（最終更新: 2026-07-09）
+
+正解・不正解フィードバック演出 v1.16.0 実装・Node機械検証済み・実機確認済み。指板上の色フィードバックのみだった正誤の手応えを強化するため、音（正解=明るいチャイム、不正解=低いブザー）と画面演出（大きな○/✗の全画面オーバーレイ）を全モード（インターバル編・発見モード・アルペジオモード）共通で追加。仕様書起草段階でアルペジオモードの完了判定に齟齬（1タップ=クリアという当初案が、実際のフェーズ管理構造と矛盾）があったためPlan modeで発見・修正し、発見モードと同じ「全音正解時のみ演出」に統一。判定基準自体（何が正解/不正解か）は一切変更していない。新規`js/feedbackFx.js`（`FeedbackFx`クラス、画面演出専属）を追加し、`js/audio.js`に`playCorrectChime()`/`playWrongBuzz()`を追加。詳細は上記「正解・不正解フィードバック演出（v1.16.0）」セクション参照。本改修はセミナー（2026-07-18）に向けた安定化フェーズの一環で、この後は新機能追加を控え実機通し確認・guide.html整合性チェック等に軸足を移す想定。
 
 インターバル編 v1.4.3 完了・GitHub Pages 公開済み（従来の改善に加え、ハンバーガーメニュー表示バグの修正、詰まった時のヒント表示機能（LV.Max除く、ON/OFF切替可）を追加。ヒントドットは実機確認とフィードバックを経て半径 0.2→0.8→0.32、不透明度 0.7→0.5 に調整済み）。
 

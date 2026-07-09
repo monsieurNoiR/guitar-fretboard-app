@@ -42,13 +42,15 @@ const HINT_DELAY_MIN = 5000;
 const HINT_DELAY_MAX = 7000;
 
 export class ArpeggioGame {
-  constructor({ audio, fretboard, hintEnabled = true, stringRange = DEFAULT_STRING_RANGE, chordTypeRangeAll = true, onProgress }) {
+  constructor({ audio, fretboard, hintEnabled = true, stringRange = DEFAULT_STRING_RANGE, chordTypeRangeAll = true, onProgress, onCorrect, onWrong }) {
     this._audio       = audio;
     this._fb          = fretboard;
     this._hintEnabled = hintEnabled;
     this._stringRange = stringRange;
     this._typeIds     = chordTypeRangeAll ? ALL_TYPE_IDS : TRIAD_TYPE_IDS;
     this._onProgress  = onProgress;
+    this._onCorrect   = onCorrect;
+    this._onWrong     = onWrong;
 
     this._fb.onTap(({ stringIdx, fret }) => this.handleTap({ stringIdx, fret }));
 
@@ -104,13 +106,18 @@ export class ArpeggioGame {
       this._phaseIndex++;
       this._emitProgress();
       if (this._phaseIndex >= this._sequence.length) {
+        // 演出用の大きな○は個々の正解タップごとではなく、コード全体を弾き終えた瞬間にのみ発火
+        this._onCorrect?.();
         this._answered = true;
         this._nextTimer = setTimeout(() => this._nextChord(), NEXT_CHORD_DELAY);
       } else {
         this._scheduleHint();
       }
+    } else {
+      // 不正解時は同じフェーズのまま待機（「粘れる」方式、状態変更なし）。
+      // 間違えるたびに毎回演出を発火する
+      this._onWrong?.();
     }
-    // 不正解時は同じフェーズのまま待機（「粘れる」方式、状態変更なし）
   }
 
   // ── 内部メソッド ──────────────────────────────────────────

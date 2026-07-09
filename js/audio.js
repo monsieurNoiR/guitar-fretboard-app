@@ -92,6 +92,50 @@ export class AudioEngine {
     });
   }
 
+  // 正誤フィードバック音用の単一ボイス生成。playNote/playChordの音符再生とは無関係な
+  // 効果音のため、waveTypeやmidi換算に依存せず周波数・波形を直接指定できるようにしている
+  _createFxVoice(freq, type, now, duration) {
+    const ctx  = this._ctx;
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type            = type;
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + duration + 0.05);
+    return { osc, gain };
+  }
+
+  // 正解フィードバック音: 固定音色（sine）の明るい2音チャイム（「ピンポン」のイメージ）。
+  // 波形設定（waveType）とは独立させ、常に同じ音色で聞き分けやすくする
+  playCorrectChime() {
+    this._ensureContext();
+    const now = this._ctx.currentTime;
+
+    [{ freq: 1046.5, delay: 0 }, { freq: 1568.0, delay: 0.09 }].forEach(({ freq, delay }) => {
+      const t = now + delay;
+      const { gain } = this._createFxVoice(freq, 'sine', t, 0.22);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(this.volume * 0.6, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    });
+  }
+
+  // 不正解フィードバック音: 固定音色（square）の低く短いブザー（下降グリッサンド）
+  playWrongBuzz() {
+    this._ensureContext();
+    const now = this._ctx.currentTime;
+    const duration = 0.18;
+
+    const { osc, gain } = this._createFxVoice(160, 'square', now, duration);
+    osc.frequency.setValueAtTime(160, now);
+    osc.frequency.exponentialRampToValueAtTime(90, now + duration);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(this.volume * 0.5, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+  }
+
   setVolume(v) {
     this.volume = Math.max(0, Math.min(1, v));
   }

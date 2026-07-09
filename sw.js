@@ -1,4 +1,4 @@
-const CACHE = 'fretboard-v28';
+const CACHE = 'fretboard-v29';
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const ASSETS = [
   './js/music.js',
   './js/fretboard.js',
   './js/audio.js',
+  './js/feedbackFx.js',
   './js/game.js',
   './js/chordGame.js',
   './js/arpeggioGame.js',
