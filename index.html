@@ -102,7 +102,14 @@
 
   <!-- 正解・不正解フィードバック演出（大きな○/✗、全画面オーバーレイ） -->
   <div id="fx-overlay" class="fx-overlay" aria-hidden="true">
-    <span id="fx-symbol" class="fx-symbol"></span>
+    <svg class="fx-symbol" viewBox="0 0 100 100" aria-hidden="true">
+      <circle class="fx-shape fx-shape-correct" cx="50" cy="50" r="38"
+               fill="none" stroke="#4caf50" stroke-width="10" stroke-linecap="round"/>
+      <g class="fx-shape fx-shape-wrong" stroke="#f44336" stroke-width="12" stroke-linecap="round">
+        <line x1="20" y1="20" x2="80" y2="80"/>
+        <line x1="80" y1="20" x2="20" y2="80"/>
+      </g>
+    </svg>
   </div>
 
   <!-- フッター（出題テキスト＋コントロール・下） -->
@@ -185,7 +192,7 @@
     </div>
 
     <div class="menu-row">
-      <span class="app-version">v1.16.0</span>
+      <span class="app-version">v1.16.1</span>
     </div>
   </div>
 </div>

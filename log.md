@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.16.1 — 2026-07-09
+
+### 正解・不正解演出のシンボルをテキスト文字からSVG描画に変更（表示不具合修正）
+- **背景**: v1.16.0で追加した○/✗の画面演出は、`textContent`によるUnicode文字（`○`/`✗`）表示だったため、ブラウザ・OSのフォールバックフォント選択に見た目が依存していた。実機確認でAndroid Chromeの✗が「線の太さがバラバラで手描きのように崩れる」問題が判明
+- **修正**: `index.html`の`#fx-overlay`内を、○用`<circle>`と✗用`<g>`（2本の`<line>`）をあらかじめ両方配置した1つの`<svg>`に置き換え、`.fx-overlay`の`fx-correct`/`fx-wrong`クラスに応じてCSSの`display`切り替えでどちらか一方だけを表示する方式に変更。指板がCanvas 2Dで自前描画されている（フォント依存を避ける設計思想）のと一貫性を持たせた
+- 色（`#4caf50`/`#f44336`）はSVGの`stroke`属性に直接指定（`js/fretboard.js`の`COLOR.correct`/`COLOR.wrong`と同じ値）。○は`stroke-width="10"`のリング、✗は`stroke-width="12"`・`stroke-linecap="round"`の2本線を45度に交差させたX字で、両方向とも同じ太さ・線端で完全対称
+- `js/feedbackFx.js`の`_trigger()`から`textContent`によるグリフ差し替えを削除し、オーバーレイへのクラス付け外しのみに簡素化。もう使われなくなった`symbolEl`引数・`this._symbol`も削除（`js/app.js`側の呼び出しも`new FeedbackFx(fxOverlay)`に簡素化）
+- 既存のCSSアニメーション（○の0.5秒フェード・✗の0.2〜0.3秒＋シェイク）・`onCorrect`/`onWrong`の発火ロジック（`js/game.js`・`js/chordGame.js`・`js/arpeggioGame.js`）は完全に無変更
+- **コードレベルの確認**: `textContent`によるグリフ表示・Unicode記号がコード上から完全に排除されたことを確認。SVGの`stroke-width`・`stroke-linecap`が固定値で設定されていることを確認
+- **PC上のブラウザ目視確認**: claude-in-chromeで○/✗ともに線の太さ均一・左右対称に描画されることを確認（アニメーションの`opacity`を一時的に固定した状態での確認。CSSアニメーション自体のキーフレーム定義は無変更のためタイミング面の回帰なし）
+- iPhone Safari・Android Chromeでの実機確認はユーザー側で別途実施予定
+- `sw.js` を `fretboard-v30` に更新
+
+---
+
 ## v1.16.0 — 2026-07-09
 
 ### 正解・不正解フィードバック演出を追加（音＋画面演出、全モード共通）

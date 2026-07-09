@@ -306,19 +306,30 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
 }
 
 .fx-symbol {
-  font-size: clamp(80px, 20vw, 180px);
-  font-weight: 700;
-  line-height: 1;
+  width: clamp(80px, 20vw, 180px);
+  height: clamp(80px, 20vw, 180px);
   opacity: 0;
 }
 
+/* ○/✗ともSVGで自前描画し、フォント・ブラウザのグリフ選択に依存しない
+   一定の線の太さ・対称性を保つ（指板Canvas 2Dの自前描画と同じ設計思想） */
+.fx-shape {
+  display: none;
+}
+
+.fx-overlay.fx-correct .fx-shape-correct {
+  display: block;
+}
+
+.fx-overlay.fx-wrong .fx-shape-wrong {
+  display: block;
+}
+
 .fx-overlay.fx-correct .fx-symbol {
-  color: #4caf50;
   animation: fx-correct-anim 0.5s ease;
 }
 
 .fx-overlay.fx-wrong .fx-symbol {
-  color: #f44336;
   animation: fx-wrong-anim 0.25s ease;
 }
 

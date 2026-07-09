@@ -89,8 +89,7 @@ const fretboard = new Fretboard(canvas);
 
 // ── 正解・不正解フィードバック演出（音＋画面演出、v1.16.0）────────
 const fxOverlay = document.getElementById('fx-overlay');
-const fxSymbol  = document.getElementById('fx-symbol');
-const feedbackFx = new FeedbackFx(fxOverlay, fxSymbol);
+const feedbackFx = new FeedbackFx(fxOverlay);
 
 function onCorrectFx() { feedbackFx.showCorrect(); audio.playCorrectChime(); }
 function onWrongFx()   { feedbackFx.showWrong();   audio.playWrongBuzz(); }
