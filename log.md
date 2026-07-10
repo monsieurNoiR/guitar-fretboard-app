@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.18.0 — 2026-07-10
+
+### 出題コード範囲設定のUIを再設計（プリセット3ボタン→独立2スイッチ、発見モード・アルペジオモード共通）
+- **背景**: v1.15.0で追加した「出題コード範囲」設定は、内部的に`{ chordTypeRangeAll, tensionEnabled }`という独立2軸を持ちながら、UIとしては「トライアドのみ／7th系まで／全部」という3プリセットボタン＋独立テンショントグルという構成にしていた。しかし「7th系まで」と「全部」はコードタイプとしては同一（全10種類）で違いはテンションの有無だけという重複があり、手動でテンションだけONにするとプリセットボタンが全て非active（カスタム状態）になり「どこにも選択の印がない」状態が発生して分かりにくかった。アルペジオモードではテンション概念自体がないため、この2つのボタンが常に同時にactiveになるというさらに分かりにくい状態も生んでいた
+- **修正**: プリセット3ボタンを廃止し、「出題コード範囲」（トライアドのみ／7th系まで）と「テンション」（OFF／ON、既存のまま）という独立した2つのスイッチに再設計。範囲スイッチは`chordTypeRangeAll`（true/false）に1:1で対応する真の2択のため、**常にどちらか一方だけが必ずactiveになり**、「全部」ボタン削除によって重複自体が構造的になくなった
+- **実装**: `index.html`の`#chord-preset-btns`（3ボタン、`data-range`/`data-tension`の2属性）を`#chord-range-btns`（2ボタン、`data-range`属性のみ）に変更。`js/app.js`の`chordPresetBtns`を`chordRangeBtns`にリネームし、クリックハンドラを`chordTypeRangeAll`のみをセットする形に簡素化（`tensionEnabled`には一切触れない）。これにより、v1.16.3のMINOR-1で対症療法的に入れた「アルペジオモードでは`tensionEnabled`に触れない」という分岐が、範囲ボタンがテンションに触れる余地自体がなくなったことで丸ごと不要になった。`syncChordSettingsUI()`のactive判定も`btn.dataset.range === String(chordTypeRangeAll)`のみに簡素化（`isArpeggio`分岐・`data-tension`比較を削除）
+- 内部状態`chordTypeRangeAll`/`tensionEnabled`の2軸自体、`ChordGame`/`ArpeggioGame`への渡し方、`music.js`の`TRIAD_TYPE_IDS`/`ALL_TYPE_IDS`/`pickChordToneSet()`は無変更
+- **全数検証**: 「範囲（triad/all）×テンション（on/off）」の4通り×有効な弦範囲10通り×全12rootPc×全ルート候補位置×（テンションONの場合は全テンションパターン）で`hasSolvableChordTones()`を総当たりし、30,240通りで詰み0件を確認（v1.15.0時点の検証と同じ通り数）
+- **実機確認**: 「トライアドのみ＋テンションON」等どの組み合わせでも範囲スイッチが常にどちらか一方だけactive表示されること（「どこにも選択の印がない」状態が発生しないこと）、発見モード⇄アルペジオモード間で範囲設定が保持されること、アルペジオモードでテンションスイッチが非表示のままであることを確認。`git diff`で`js/game.js`・`js/chordGame.js`・`js/arpeggioGame.js`・`js/music.js`が無変更であることを確認
+- `guide.html`の6章・7章（step1・「現在の範囲」box）を新UIに合わせて更新（「プリセット」「3段階」「一括ショートカット」「カスタム状態」等の記述を削除し、独立2スイッチの説明に書き換え）
+- `sw.js` を `fretboard-v35` に更新
+
+---
+
 ## v1.17.0 — 2026-07-10
 
 ### フレット番号の表示位置を指板上側から下側へ変更（全モード共通）

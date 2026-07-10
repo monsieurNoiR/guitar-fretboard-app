@@ -54,7 +54,7 @@ const judgeRangeStart  = document.getElementById('judge-range-start');
 const judgeRangeEnd    = document.getElementById('judge-range-end');
 const judgeSliderFill  = document.getElementById('judge-slider-fill');
 const elJudgeStringSummary = document.getElementById('judge-string-summary');
-const chordPresetBtns  = document.querySelectorAll('#chord-preset-btns .wave-btn');
+const chordRangeBtns   = document.querySelectorAll('#chord-range-btns .wave-btn');
 const tensionToggleRow = document.getElementById('tension-toggle-row');
 const btnTension       = document.getElementById('btn-tension');
 
@@ -405,21 +405,16 @@ function openJudgeStringScreen(mode) {
   showScreen('screen-judge-strings');
 }
 
-// 現在の chordTypeRangeAll/tensionEnabled をプリセットボタン・トグルの表示に反映する。
-// 一致するプリセットがない組み合わせ（例: トライアドのみ+テンションON）は全ボタン非activeの
-// 「カスタム」状態になる（.wave-btnの「一致するボタンにだけactive」パターンを流用）
+// 現在の chordTypeRangeAll/tensionEnabled をスイッチの表示に反映する。
+// 出題コード範囲（トライアドのみ／7th系まで）はchordTypeRangeAllへの1:1の2択スイッチのため、
+// 常にどちらか一方だけがactiveになる（v1.18.0でプリセット3ボタン方式から変更）。
+// テンションは独立したON/OFFトグルで、常に現在値をテキスト表示する
 function syncChordSettingsUI() {
   btnTension.dataset.enabled = String(tensionEnabled);
   btnTension.textContent = tensionEnabled ? 'ON' : 'OFF';
 
-  // アルペジオモードはテンション非対応のため、chordTypeRangeAllの一致のみで判定する
-  // （「7th系まで」「全部」はアルペジオでは機能的に同一のため、両方activeになり得る）
-  const isArpeggio = pendingPracticeMode === 'arpeggio';
-  chordPresetBtns.forEach(btn => {
-    const matches = isArpeggio
-      ? (btn.dataset.range === String(chordTypeRangeAll))
-      : (btn.dataset.range === String(chordTypeRangeAll)) && (btn.dataset.tension === String(tensionEnabled));
-    btn.classList.toggle('active', matches);
+  chordRangeBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.range === String(chordTypeRangeAll));
   });
 }
 
@@ -472,16 +467,12 @@ function applyJudgeRange(movedSide) {
 judgeRangeStart.addEventListener('input', () => applyJudgeRange('start'));
 judgeRangeEnd.addEventListener('input',   () => applyJudgeRange('end'));
 
-// 出題コード範囲プリセットボタン: data-range/data-tensionから2軸を一括セットする。
-// アルペジオモードはテンション非対応のため、発見モード用のtensionEnabledには触れない
-// （MINOR-1対応: アルペジオでプリセットを押すたびに裏でtensionEnabledが書き換わり、
-// 発見モードに戻った際にテンション設定が意図せず変わってしまう不具合の修正）
-chordPresetBtns.forEach(btn => {
+// 出題コード範囲スイッチ: chordTypeRangeAllのみをセットする（tensionEnabledには触れない。
+// v1.18.0でプリセット3ボタン方式から独立2スイッチ方式に変更したことで、範囲ボタンが
+// テンションに触れる余地自体がなくなった）
+chordRangeBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     chordTypeRangeAll = btn.dataset.range === 'true';
-    if (pendingPracticeMode !== 'arpeggio') {
-      tensionEnabled = btn.dataset.tension === 'true';
-    }
     syncChordSettingsUI();
   });
 });
