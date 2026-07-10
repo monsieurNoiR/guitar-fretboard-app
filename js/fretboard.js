@@ -151,7 +151,7 @@ export class Fretboard {
   }
 
   _drawLayer1(ctx, layout, W, H) {
-    const { BASE_LEFT, OPEN_ZONE, PAD_LEFT, PAD_TOP, boardW, boardH,
+    const { BASE_LEFT, OPEN_ZONE, PAD_LEFT, PAD_TOP, PAD_BOT, boardW, boardH,
             fretStep, strStep, fretX, strY, start, end } = layout;
 
     // ─ 判定対象弦のハイライト帯（マスクとのコントラストを上げるため先に敷く）─
@@ -187,17 +187,20 @@ export class Fretboard {
       }
     }
 
-    // ─ フレット番号ラベル ─
+    // ─ フレット番号ラベル（v1.17.0: 指板下側に表示。タップする弦・他の確認情報
+    //   [コード名・進捗テキスト・「もう一度」ボタン]がいずれも指板より下にあり、
+    //   視線の動線に合わせるため。PAD_TOPと対称のPAD_BOT側にミラーリングした位置） ─
     ctx.fillStyle    = 'rgba(255,255,255,0.4)';
     ctx.font         = `${Math.max(10, fretStep * 0.22)}px monospace`;
     ctx.textAlign    = 'center';
-    ctx.textBaseline = 'bottom';
+    ctx.textBaseline = 'top';
+    const labelY = PAD_TOP + boardH + PAD_BOT * 0.15;
     // 0フレット（開放弦）ラベル: 開放弦ゾーン中央に表示
     if (start === 0 && OPEN_ZONE > 0) {
-      ctx.fillText('0', PAD_LEFT - OPEN_ZONE / 2, PAD_TOP * 0.85);
+      ctx.fillText('0', PAD_LEFT - OPEN_ZONE / 2, labelY);
     }
     for (let f = start + 1; f <= end + 1; f++) {
-      ctx.fillText(String(f), fretX(f) - fretStep / 2, PAD_TOP * 0.85);
+      ctx.fillText(String(f), fretX(f) - fretStep / 2, labelY);
     }
 
     // ─ フレット線 ─
