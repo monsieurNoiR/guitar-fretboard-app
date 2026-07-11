@@ -645,4 +645,8 @@ window.addEventListener('orientationchange', () => {
   screen.orientation?.lock?.('landscape').catch(() => {});
   // 初期向き判定
   updatePortraitOverlay();
+  // Service Worker登録（sw.jsのキャッシュファースト戦略・オフライン対応を有効化）
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
 })();
