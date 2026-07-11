@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.20.0 — 2026-07-11
+
+### 判定弦選択画面・練習モード設定画面の確定ボタンを固定フッター化
+- **背景**: `#screen-judge-strings`（判定弦選択画面）・`#screen-practice-settings`（練習モード設定画面）は、設定項目が多いと確定ボタン（「この設定で練習をはじめる」）がスクロール領域の一番下にあるため画面外に隠れ、スクロール可能であることを示唆する要素もないため、初見のユーザーがボタンの存在に気づきにくいという指摘があった
+- **対応方針**: 複数の対応案（下端フェード等のヒント表示、確定ボタンの固定フッター化、両者の併用）を提示し、ハンバーガーメニュー（`.menu-header`固定＋`.menu-inner`本体スクロール）で以前同種の問題を解決した前例を踏まえ、確定ボタンを常時可視の固定フッターとして切り出す方式を採用（ユーザー承認済み）
+- **実装**: `index.html`で両画面の確定ボタン（`#btn-judge-confirm`・`#btn-practice-settings-confirm`）を`<main class="home-main judge-string-main">`の外に出し、新設の`<footer class="judge-string-footer">`に移動。`css/style.css`に`.judge-string-footer`（`flex-shrink:0`・`border-top`区切り線）を追加し、`#btn-judge-confirm { align-self: center; }`は`.judge-string-footer`の`justify-content: center`に統合。`.screen`が既に`padding-bottom: env(safe-area-inset-bottom)`を持つため、フッター側で二重にsafe area対応を追加しない（`.game-footer`と同じパターン）
+- **JS側は無変更**: `js/app.js`のDOM参照は`getElementById`のみで親構造に依存しないため、変更不要だった
+- **実機確認**: 両画面とも、`.screen`要素に一時的なinline `height`を注入してコンテンツオーバーフロー状態を再現し、確定ボタンがスクロールなしで常に画面下部に見えること、スクロール領域内の設定項目（出題コード範囲・テンション・基準音ランダム化・出題度数グリッド）が正しく表示されることを確認。アルペジオモード（テンション行非表示でコンテンツ量が少ない状態）でも余分な空白やレイアウト崩れがないことを確認。確定ボタンクリックによる画面遷移（発見モード・アルペジオモードとも）が正常に動作することを確認
+- **回帰確認**: `git diff`で`js/app.js`・`js/game.js`・`js/chordGame.js`・`js/arpeggioGame.js`・`js/music.js`が無変更であることを確認
+- `sw.js` を `fretboard-v37` に更新
+
+---
+
 ## v1.19.0 — 2026-07-11
 
 ### インターバル編 練習モード自由設定を追加（判定弦範囲・基準音ランダム化・出題度数選択）

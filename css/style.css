@@ -272,7 +272,18 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
   margin-bottom: 20px;
 }
 
-#btn-judge-confirm { align-self: center; }
+/* 確定ボタンを固定フッターとしてスクロール領域の外に出す（v1.20.0）。設定項目が多い場合でも
+   ボタンが画面外に隠れずスクロールなしで常に見えるようにする。ハンバーガーメニュー
+   （.menu-header固定＋.menu-inner本体スクロール）と同じ設計思想をフッター側に適用したもの。
+   safe area対応は親の.screenに既にpadding-bottomがあるため、ここでは追加しない
+   （.game-footerと同じパターン） */
+.judge-string-footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
 
 /* ═══════════════════════════════════════════════════════════
    ゲーム画面
