@@ -196,7 +196,14 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
   gap: 12px;
 }
 
-.judge-string-main { padding-top: 24px; }
+.judge-string-main {
+  padding-top: 24px;
+  /* スクロール下端フェード（v1.20.1）: まだ下にコンテンツがあることを示す視覚的ヒント。
+     消しゴム層（local）がコンテンツと一緒に動き、末尾到達時にフェード層（scroll）と重なって消える。 */
+  background:
+    linear-gradient(var(--bg), var(--bg)) bottom / 100% 32px no-repeat local,
+    linear-gradient(to top, var(--bg), transparent) bottom / 100% 32px no-repeat scroll;
+}
 
 .judge-slider {
   position: relative;
