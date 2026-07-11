@@ -198,11 +198,28 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
 
 .judge-string-main {
   padding-top: 24px;
-  /* スクロール下端フェード（v1.20.1）: まだ下にコンテンツがあることを示す視覚的ヒント。
-     消しゴム層（local）がコンテンツと一緒に動き、末尾到達時にフェード層（scroll）と重なって消える。 */
-  background:
-    linear-gradient(var(--bg), var(--bg)) bottom / 100% 32px no-repeat local,
-    linear-gradient(to top, var(--bg), transparent) bottom / 100% 32px no-repeat scroll;
+  position: relative; /* ::after疑似要素（スクロール下端フェード）の基準 */
+}
+
+/* スクロール下端フェード（v1.20.3）: まだ下にコンテンツがあることを示す視覚的ヒント。
+   iOS Safariはoverflow:auto要素でネイティブの慣性スクロールがデフォルトのため、
+   background-attachment: local の再描画が信頼できない（v1.20.1で発覚）。
+   JS（js/app.jsのinitScrollFade）がscroll位置を監視しhas-more-contentクラスを
+   付け外しすることで、opacityトランジションのみで確実にフェードを表現する。 */
+.judge-string-main::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 32px;
+  background: linear-gradient(to top, var(--bg), transparent);
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.judge-string-main.has-more-content::after {
+  opacity: 1;
 }
 
 .judge-slider {

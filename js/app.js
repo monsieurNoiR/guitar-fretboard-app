@@ -635,12 +635,26 @@ window.addEventListener('orientationchange', () => {
   }, 100);
 });
 
+// スクロール下端フェード（v1.20.3）: iOS Safariでbackground-attachment: localが
+// 慣性スクロールと非互換のため、scroll監視+クラス切り替え方式に変更（css/style.cssの
+// .judge-string-main::afterと対）
+function initScrollFade(el) {
+  const update = () => {
+    const hasMore = el.scrollHeight - el.scrollTop - el.clientHeight > 1;
+    el.classList.toggle('has-more-content', hasMore);
+  };
+  el.addEventListener('scroll', update, { passive: true });
+  new ResizeObserver(update).observe(el);
+  update();
+}
+
 // ── 初期化 ────────────────────────────────────────────────
 (function init() {
   buildLvList();
   showScreen('screen-home');
   document.querySelector('.wave-btn[data-wave="square"]')?.classList.add('active');
   chordStringSlider.syncUI();
+  document.querySelectorAll('.judge-string-main').forEach(initScrollFade);
   // PWAとしてホーム画面に追加済みの場合は横向きをロック
   screen.orientation?.lock?.('landscape').catch(() => {});
   // 初期向き判定
