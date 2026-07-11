@@ -76,6 +76,11 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
 .btn-primary:active,
 .btn-secondary:active { opacity: 0.75; }
 
+.btn-primary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .hidden { display: none !important; }
 
 /* ═══════════════════════════════════════════════════════════
@@ -185,7 +190,8 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
 /* ═══════════════════════════════════════════════════════════
    判定弦選択画面（コードトーン編：発見・アルペジオ共通）
 ════════════════════════════════════════════════════════════ */
-#screen-judge-strings .home-header {
+#screen-judge-strings .home-header,
+#screen-practice-settings .home-header {
   justify-content: flex-start;
   gap: 12px;
 }
@@ -578,6 +584,14 @@ body.mode-chord .question-area {
   color: var(--accent);
 }
 .wave-btn:active { opacity: 0.7; }
+
+/* インターバル編 練習モード設定: 出題度数の複数選択グリッド（v1.19.0）。
+   .wave-btn自体は無変更で流用し、コンテナのみflexからgridに切り替える */
+.interval-select-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
 
 .pwa-hint {
   font-size: 0.78rem;

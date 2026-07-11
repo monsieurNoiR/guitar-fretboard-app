@@ -21,6 +21,14 @@ let chordTypeRangeAll   = true;
 let tensionEnabled      = true;
 // 判定弦選択画面から「この設定で練習をはじめる」を押した時にどちらのモードを開始するか
 let pendingPracticeMode = null; // 'chord' | 'arpeggio'
+// インターバル編 練習モードの自由設定（v1.19.0）。LV.1〜LV.Maxの固定ルールには影響しない。
+// judgeStringStart/judgeStringCountと同じ開始弦インデックス＋本数の持ち方
+let practiceJudgeStringStart = 0;
+let practiceJudgeStringCount = 3;
+// false=基準音C固定（既存の練習モードと同じ） / true=12音フルランダム（LV.4/LV.Maxと同じ考え方）
+let practiceRootRandomized   = false;
+// 出題度数（半音数のSet）。デフォルトはPRACTICE_LEVEL.intervalsと同じR・3rd・5th
+let practiceIntervals        = new Set(PRACTICE_LEVEL.intervals);
 const audio             = new AudioEngine();
 
 // 「開始弦インデックス, 本数」→ 判定弦域の配列（例: 0,3 → [0,1,2]）
@@ -57,6 +65,17 @@ const elJudgeStringSummary = document.getElementById('judge-string-summary');
 const chordRangeBtns   = document.querySelectorAll('#chord-range-btns .wave-btn');
 const tensionToggleRow = document.getElementById('tension-toggle-row');
 const btnTension       = document.getElementById('btn-tension');
+
+// ── インターバル編 練習モード設定画面 ──
+const screenPracticeSettings = document.getElementById('screen-practice-settings');
+const btnPracticeSettingsBack    = document.getElementById('btn-practice-settings-back');
+const btnPracticeSettingsConfirm = document.getElementById('btn-practice-settings-confirm');
+const practiceJudgeRangeStart = document.getElementById('practice-judge-range-start');
+const practiceJudgeRangeEnd   = document.getElementById('practice-judge-range-end');
+const practiceJudgeSliderFill = document.getElementById('practice-judge-slider-fill');
+const elPracticeJudgeStringSummary = document.getElementById('practice-judge-string-summary');
+const btnPracticeRootRandom   = document.getElementById('btn-practice-root-random');
+const practiceIntervalBtns    = document.querySelectorAll('#practice-interval-btns .wave-btn');
 
 // ── ゲーム画面 ──
 const screenGame   = document.getElementById('screen-game');
@@ -359,7 +378,7 @@ btnInterval.addEventListener('click', () => selectMode('interval'));
 btnChord.addEventListener('click', () => selectMode('chord'));
 btnChordArpeggio.addEventListener('click', () => selectMode('arpeggio'));
 
-btnPractice.addEventListener('click', () => startGame(PRACTICE_LEVEL));
+btnPractice.addEventListener('click', () => openPracticeSettingsScreen());
 btnChordPractice.addEventListener('click', () => openJudgeStringScreen('chord'));
 btnChordArpeggioPractice.addEventListener('click', () => openJudgeStringScreen('arpeggio'));
 
@@ -398,7 +417,7 @@ waveButtons.forEach(btn => {
 function openJudgeStringScreen(mode) {
   pendingPracticeMode = mode;
   menuPanel.classList.remove('open');
-  syncJudgeSliderUI();
+  chordStringSlider.syncUI();
   syncChordSettingsUI();
   // テンションはアルペジオモード非対応のため、発見モード時のみトグル行を表示する
   tensionToggleRow.classList.toggle('hidden', mode === 'arpeggio');
@@ -418,54 +437,78 @@ function syncChordSettingsUI() {
   });
 }
 
-// 現在の judgeStringStart/judgeStringCount をスライダーのつまみ位置に反映する
-function syncJudgeSliderUI() {
-  judgeRangeStart.value = String(judgeStringStart);
-  judgeRangeEnd.value   = String(judgeStringStart + judgeStringCount - 1);
-  updateJudgeSliderVisual();
-}
-
-// fillバーの位置・幅と要約テキストを再描画する
-function updateJudgeSliderVisual() {
-  const endIdx = judgeStringStart + judgeStringCount - 1;
-  const leftPct  = (judgeStringStart / MAX_STRING_INDEX) * 100;
-  const rightPct = (endIdx / MAX_STRING_INDEX) * 100;
-  judgeSliderFill.style.left  = `${leftPct}%`;
-  judgeSliderFill.style.width = `${rightPct - leftPct}%`;
-  elJudgeStringSummary.textContent =
-    `${STRING_LABELS[judgeStringStart]}〜${STRING_LABELS[endIdx]}（${judgeStringCount}本）を使用`;
-}
-
-// 2つのつまみの間に最小ギャップ（3本分）を保ちつつ、動かした側に応じてもう片方を押し出す
-function applyJudgeRange(movedSide) {
-  let startVal = Number(judgeRangeStart.value);
-  let endVal   = Number(judgeRangeEnd.value);
-
-  if (endVal - startVal < MIN_JUDGE_GAP) {
-    if (movedSide === 'start') {
-      endVal = startVal + MIN_JUDGE_GAP;
-      if (endVal > MAX_STRING_INDEX) {
-        endVal   = MAX_STRING_INDEX;
-        startVal = endVal - MIN_JUDGE_GAP;
-      }
-    } else {
-      startVal = endVal - MIN_JUDGE_GAP;
-      if (startVal < 0) {
-        startVal = 0;
-        endVal   = startVal + MIN_JUDGE_GAP;
-      }
-    }
-    judgeRangeStart.value = String(startVal);
-    judgeRangeEnd.value   = String(endVal);
+// デュアルレンジ弦選択スライダーの共通ロジック（判定弦選択画面・練習モード設定画面で共用、v1.19.0）。
+// DOM要素と状態の読み書きをコールバックで受け取ることで、同じ最小本数ガード・見た目更新ロジックを
+// 複数の独立した状態（judgeStringStart/CountとpracticeJudgeStringStart/Count）に対して使い回す
+function createStringRangeSlider({ startInput, endInput, fillEl, summaryEl, getState, setState }) {
+  function updateVisual() {
+    const { start, count } = getState();
+    const endIdx = start + count - 1;
+    const leftPct  = (start / MAX_STRING_INDEX) * 100;
+    const rightPct = (endIdx / MAX_STRING_INDEX) * 100;
+    fillEl.style.left  = `${leftPct}%`;
+    fillEl.style.width = `${rightPct - leftPct}%`;
+    summaryEl.textContent = `${STRING_LABELS[start]}〜${STRING_LABELS[endIdx]}（${count}本）を使用`;
   }
 
-  judgeStringStart = startVal;
-  judgeStringCount = endVal - startVal + 1;
-  updateJudgeSliderVisual();
+  // 2つのつまみの間に最小ギャップ（3本分）を保ちつつ、動かした側に応じてもう片方を押し出す
+  function apply(movedSide) {
+    let startVal = Number(startInput.value);
+    let endVal   = Number(endInput.value);
+
+    if (endVal - startVal < MIN_JUDGE_GAP) {
+      if (movedSide === 'start') {
+        endVal = startVal + MIN_JUDGE_GAP;
+        if (endVal > MAX_STRING_INDEX) {
+          endVal   = MAX_STRING_INDEX;
+          startVal = endVal - MIN_JUDGE_GAP;
+        }
+      } else {
+        startVal = endVal - MIN_JUDGE_GAP;
+        if (startVal < 0) {
+          startVal = 0;
+          endVal   = startVal + MIN_JUDGE_GAP;
+        }
+      }
+      startInput.value = String(startVal);
+      endInput.value   = String(endVal);
+    }
+
+    setState(startVal, endVal - startVal + 1);
+    updateVisual();
+  }
+
+  // 現在の状態をスライダーのつまみ位置に反映する（画面を開くたびに呼ぶ）
+  function syncUI() {
+    const { start, count } = getState();
+    startInput.value = String(start);
+    endInput.value   = String(start + count - 1);
+    updateVisual();
+  }
+
+  startInput.addEventListener('input', () => apply('start'));
+  endInput.addEventListener('input',   () => apply('end'));
+
+  return { syncUI };
 }
 
-judgeRangeStart.addEventListener('input', () => applyJudgeRange('start'));
-judgeRangeEnd.addEventListener('input',   () => applyJudgeRange('end'));
+const chordStringSlider = createStringRangeSlider({
+  startInput: judgeRangeStart,
+  endInput:   judgeRangeEnd,
+  fillEl:     judgeSliderFill,
+  summaryEl:  elJudgeStringSummary,
+  getState: () => ({ start: judgeStringStart, count: judgeStringCount }),
+  setState: (start, count) => { judgeStringStart = start; judgeStringCount = count; },
+});
+
+const practiceStringSlider = createStringRangeSlider({
+  startInput: practiceJudgeRangeStart,
+  endInput:   practiceJudgeRangeEnd,
+  fillEl:     practiceJudgeSliderFill,
+  summaryEl:  elPracticeJudgeStringSummary,
+  getState: () => ({ start: practiceJudgeStringStart, count: practiceJudgeStringCount }),
+  setState: (start, count) => { practiceJudgeStringStart = start; practiceJudgeStringCount = count; },
+});
 
 // 出題コード範囲スイッチ: chordTypeRangeAllのみをセットする（tensionEnabledには触れない。
 // v1.18.0でプリセット3ボタン方式から独立2スイッチ方式に変更したことで、範囲ボタンが
@@ -477,8 +520,8 @@ chordRangeBtns.forEach(btn => {
   });
 });
 
-// テンションON/OFFトグル: 手動操作でプリセットと不一致になれば syncChordSettingsUI() が
-// 自動的に全ボタン非active（カスタム状態）にする
+// テンションON/OFFトグル: tensionEnabledを反転して表示を更新するだけ（範囲スイッチ
+// [chordRangeBtns]とは完全に独立しており、こちらの操作が範囲側のactive状態に影響することはない）
 btnTension.addEventListener('click', () => {
   tensionEnabled = !tensionEnabled;
   syncChordSettingsUI();
@@ -488,6 +531,70 @@ btnJudgeBack.addEventListener('click', () => showScreen('screen-home'));
 btnJudgeConfirm.addEventListener('click', () => {
   if (pendingPracticeMode === 'chord') startChordPractice();
   else if (pendingPracticeMode === 'arpeggio') startChordArpeggio();
+});
+
+// インターバル編：練習モード設定画面（判定弦範囲・基準音ランダム化・出題度数の自由設定、v1.19.0）。
+// LV.1〜LV.Maxの固定ルールとは独立しており、「練習モード（タイムなし）」ボタンからのみ開く
+function openPracticeSettingsScreen() {
+  menuPanel.classList.remove('open');
+  practiceStringSlider.syncUI();
+  syncPracticeSettingsUI();
+  showScreen('screen-practice-settings');
+}
+
+// 現在のpracticeRootRandomized/practiceIntervalsをスイッチ・度数グリッドの表示に反映する。
+// 出題度数が0個の間は確定ボタンをdisabledにする（判定弦スライダーは最小本数3を構造的に
+// 下回れないが、度数グリッドは全解除できてしまうため、確定ボタン側で下限バリデーションする）
+function syncPracticeSettingsUI() {
+  btnPracticeRootRandom.dataset.enabled = String(practiceRootRandomized);
+  btnPracticeRootRandom.textContent = practiceRootRandomized ? 'ON' : 'OFF';
+
+  practiceIntervalBtns.forEach(btn => {
+    btn.classList.toggle('active', practiceIntervals.has(Number(btn.dataset.semitone)));
+  });
+
+  btnPracticeSettingsConfirm.disabled = practiceIntervals.size === 0;
+}
+
+practiceIntervalBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const semitone = Number(btn.dataset.semitone);
+    if (practiceIntervals.has(semitone)) practiceIntervals.delete(semitone);
+    else practiceIntervals.add(semitone);
+    syncPracticeSettingsUI();
+  });
+});
+
+btnPracticeRootRandom.addEventListener('click', () => {
+  practiceRootRandomized = !practiceRootRandomized;
+  syncPracticeSettingsUI();
+});
+
+// 練習モード設定から実際のGame用levelオブジェクトを組み立てる。判定弦範囲・基準音ランダム化・
+// 出題度数はここでのみ解決され、js/game.jsは一切変更していない（Gameクラスがlevelの形に対して
+// 完全に汎用的なため、levelオブジェクトを組み立てて渡すだけで実現できる）。
+// rootStringsは常にjudgeStringsと同じ範囲にし、「ルート出現弦は判定弦域に含まれる必要がある」
+// という判定弦カスタマイズ機能（v1.11.0）以来の原則をここでも踏襲する
+function buildPracticeLevel() {
+  const stringRange = Array.from(
+    { length: practiceJudgeStringCount },
+    (_, i) => practiceJudgeStringStart + i,
+  );
+  return {
+    id: 'practice',
+    label: '練習',
+    intervals: Array.from(practiceIntervals),
+    rootPcs: practiceRootRandomized ? [0,1,2,3,4,5,6,7,8,9,10,11] : [0],
+    judgeStrings: stringRange,
+    rootStrings: stringRange,
+    rootOctaves: practiceRootRandomized ? [0, 1] : [0],
+  };
+}
+
+btnPracticeSettingsBack.addEventListener('click', () => showScreen('screen-home'));
+btnPracticeSettingsConfirm.addEventListener('click', () => {
+  if (practiceIntervals.size === 0) return; // 念のための二重ガード（ボタンはdisabled済み）
+  startGame(buildPracticeLevel());
 });
 
 // 開放弦除外トグル
@@ -533,7 +640,7 @@ window.addEventListener('orientationchange', () => {
   buildLvList();
   showScreen('screen-home');
   document.querySelector('.wave-btn[data-wave="square"]')?.classList.add('active');
-  syncJudgeSliderUI();
+  chordStringSlider.syncUI();
   // PWAとしてホーム画面に追加済みの場合は横向きをロック
   screen.orientation?.lock?.('landscape').catch(() => {});
   // 初期向き判定

@@ -91,6 +91,56 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
+     練習モード設定画面（インターバル編）
+══════════════════════════════════════════════════════════ -->
+<div id="screen-practice-settings" class="screen">
+  <header class="home-header">
+    <button id="btn-practice-settings-back" class="btn-icon" aria-label="戻る">←</button>
+    <h1 class="app-title">練習モード設定</h1>
+  </header>
+  <main class="home-main judge-string-main">
+    <p class="chord-intro">タップ判定の対象となる弦の範囲を選んでください。基準音もこの範囲の弦から鳴ります。</p>
+
+    <div class="judge-slider">
+      <div class="judge-slider-track"></div>
+      <div class="judge-slider-fill" id="practice-judge-slider-fill"></div>
+      <input type="range" id="practice-judge-range-start" class="judge-range-input" min="0" max="5" step="1" value="0">
+      <input type="range" id="practice-judge-range-end"   class="judge-range-input" min="0" max="5" step="1" value="2">
+    </div>
+    <div class="judge-slider-ticks">
+      <span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+    </div>
+
+    <p class="judge-string-summary" id="practice-judge-string-summary">6弦〜4弦（低音側3本）を使用</p>
+
+    <div class="menu-row menu-row-inline judge-chord-settings">
+      <span>基準音ランダム化</span>
+      <button id="btn-practice-root-random" class="btn-text" data-enabled="false">OFF</button>
+    </div>
+
+    <div class="menu-row judge-chord-settings">
+      <span>出題度数（最低1つ選択）</span>
+      <div class="wave-btns interval-select-grid" id="practice-interval-btns">
+        <button class="wave-btn" data-semitone="0">R</button>
+        <button class="wave-btn" data-semitone="1">b2</button>
+        <button class="wave-btn" data-semitone="2">2nd</button>
+        <button class="wave-btn" data-semitone="3">m3</button>
+        <button class="wave-btn" data-semitone="4">3rd</button>
+        <button class="wave-btn" data-semitone="5">4th</button>
+        <button class="wave-btn" data-semitone="6">b5</button>
+        <button class="wave-btn" data-semitone="7">5th</button>
+        <button class="wave-btn" data-semitone="8">#5</button>
+        <button class="wave-btn" data-semitone="9">6th</button>
+        <button class="wave-btn" data-semitone="10">m7</button>
+        <button class="wave-btn" data-semitone="11">7th</button>
+      </div>
+    </div>
+
+    <button id="btn-practice-settings-confirm" class="btn-primary">この設定で練習をはじめる</button>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
      ゲーム画面
 ══════════════════════════════════════════════════════════ -->
 <div id="screen-game" class="screen">
@@ -191,7 +241,7 @@
     </div>
 
     <div class="menu-row">
-      <span class="app-version">v1.18.0</span>
+      <span class="app-version">v1.19.0</span>
     </div>
   </div>
 </div>
