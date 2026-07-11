@@ -198,28 +198,7 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
 
 .judge-string-main {
   padding-top: 24px;
-  position: relative; /* ::after疑似要素（スクロール下端フェード）の基準 */
-}
-
-/* スクロール下端フェード（v1.20.3）: まだ下にコンテンツがあることを示す視覚的ヒント。
-   iOS Safariはoverflow:auto要素でネイティブの慣性スクロールがデフォルトのため、
-   background-attachment: local の再描画が信頼できない（v1.20.1で発覚）。
-   JS（js/app.jsのinitScrollFade）がscroll位置を監視しhas-more-contentクラスを
-   付け外しすることで、opacityトランジションのみで確実にフェードを表現する。 */
-.judge-string-main::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 32px;
-  background: linear-gradient(to top, var(--bg), transparent);
-  opacity: 0;
-  transition: opacity 0.15s;
-  pointer-events: none;
-}
-.judge-string-main.has-more-content::after {
-  opacity: 1;
+  padding-bottom: 80px; /* v1.20.3: フッター（確定ボタン+パディング）の高さ分の余白 */
 }
 
 .judge-slider {
@@ -302,11 +281,21 @@ button { cursor: pointer; border: none; background: none; color: var(--text); }
    safe area対応は親の.screenに既にpadding-bottomがあるため、ここでは追加しない
    （.game-footerと同じパターン） */
 .judge-string-footer {
-  flex-shrink: 0;
+  /* スクロールヒント（v1.20.3）: フッターを.judge-string-mainに重ねて半透明にすることで、
+     スクロール時にコンテンツがフッター越しにうっすら透けて見え「まだ下に続きがある」ことを
+     常時伝える。以前は.home-mainとの兄弟要素（縦積み）だったため重なりがなく透過が
+     機能しなかったため、position: absoluteでコンテンツの上に重ねる構造に変更した。
+     動的な演出はiOS Safariで機能しなかったため、状態を持たない静的な実装にしている */
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   justify-content: center;
   padding: 12px 16px;
   border-top: 1px solid var(--border);
+  background: rgba(17, 17, 17, 0.85);
 }
 
 /* ═══════════════════════════════════════════════════════════

@@ -2,14 +2,17 @@
 
 ## v1.20.3 — 2026-07-11
 
-### スクロール下端フェードをCSS-onlyからJS方式へ置き換え（iOS Safari非互換の解消）
-- **背景**: v1.20.2でSW未登録問題を修正しデプロイ完了後も、Safariで本番URLに直接アクセスした状態でスクロールシャドウのフェード効果が依然として見られないという報告があった。この時点でキャッシュ関連の要因（SW・CDN・ブラウザHTTPキャッシュ）はすべて排除できていたため、実装自体・CSSの適用条件を疑いゼロから再調査した
-- **調査結果**: 本番CSS・デプロイ内容は現在も正しく、`.judge-string-main`を上書きする他のCSSルールも存在しないことを確認。v1.20.0の固定フッター化との構造的な干渉もないことを確認。一方で、**iOS Safariは`overflow: auto`要素でiOS 13以降デフォルトでネイティブの慣性スクロール（momentum scrolling）を使用するため、`background-attachment: local`の再描画メカニズムと構造的に非互換**という既知の問題があることが判明した。iOS Safariでは`local`が正しく機能せず`scroll`と同一の挙動にフォールバックする場合があり、その場合、本来スクロール末尾以外は画面外にあるはずの「消しゴム層」が常にビューポート下端に描画され続け、フェード層を常時覆い隠してしまう。これは今回報告された「初期表示から既にフェードが全く見えない」という症状と完全に一致する
-- **v1.20.1調査時の判断の不十分さ**: claude-in-chrome（Chromiumベース）でのみ動作検証を行い「実装は正しい」と結論づけていたが、このアプリの主要ターゲットであるiOS Safariでの実機検証ができていなかった。CSSの構文としては正しくても、ブラウザエンジン固有のレンダリング非互換までは検証できていなかった
-- **修正**: `background-attachment`の挙動に依存しない、`scroll`イベント監視＋クラス切り替え＋`opacity`トランジション方式に置き換えた。`css/style.css`の`.judge-string-main`から`background`プロパティを削除し、`position: relative`＋`::after`疑似要素（`opacity`を`has-more-content`クラスで切り替え）に変更。`js/app.js`に`initScrollFade(el)`関数を新設し、`scroll`イベント（`{ passive: true }`）と`ResizeObserver`（テンション行の表示/非表示等、スクロールを伴わないコンテンツ量変化にも追従）の両方で`update()`を呼び、`el.scrollHeight - el.scrollTop - el.clientHeight > 1`の判定で`has-more-content`クラスを付け外しする。`init()`内で両方の`.judge-string-main`要素に適用
-- **検証**: claude-in-chromeで両画面（`#screen-judge-strings`・`#screen-practice-settings`）のオーバーフロー再現状態での初期表示フェード視認・最下部スクロールでの消失・コンテンツが少ない場合（アルペジオモードの判定弦選択画面）での非表示を確認。スライダー操作・確定ボタンクリックによる画面遷移にも回帰なし。`ResizeObserver`の即時発火は自動操作タブのレンダリングパイプライン間引き（CLAUDE.md既存の注意点）により直接確認できなかったが、手動`scroll`イベントディスパッチで`update()`ロジック自体の正しさは確認済み（標準APIの教科書的な使用のため機能面のリスクは低いと判断）
-- **iOS Safari実機での最終確認**: claude-in-chromeはChromiumのみのため、今回の修正がiOS Safariで実際に解決するかはJS方式の原理的な信頼性に基づく判断であり、完全な保証にはユーザー側での実機確認が必要
-- `sw.js` を `fretboard-v40` に更新
+### スクロールヒントをシンプルな固定半透明フッターに変更（試行錯誤の末の方針転換）
+- **背景**: v1.20.1〜v1.20.3で「スクロール位置に応じて動的にフェードを出し分ける」凝った演出を複数回試みたが、いずれも実機（iOS Safari）で意図通り動作しなかった
+  1. **v1.20.1（CSS-only）**: `background-attachment: local`/`scroll`の2層グラデーション。Chromiumでは動作したが、iOS Safariは`overflow: auto`要素でiOS 13以降デフォルトの慣性スクロールを使うため`local`の再描画が構造的に非互換で、Safari実機では全く機能していなかった
+  2. **JS版（`scroll`イベント＋`ResizeObserver`＋クラス切り替え、同じくv1.20.3として一度実装）**: `background-attachment`への依存を排除したが、こちらも実機で意図通り動作せず、新たな表示崩れ（グラデーションが意図しない場所に出る、フッターが黒塗りになる等）を引き起こした
+  3. **方針転換**: 「隠れているコンテンツがあることに気づいてもらう」という本来の目的さえ達成できれば、「スクロール末尾で自動的に消える」動的な演出は不要と判断し、状態を持たないシンプルな実装に切り替えた
+- **修正（1回目、効果なし）**: `.judge-string-footer`の背景色を半透明（`rgba(17, 17, 17, 0.85)`）にするだけの実装を試みたが、`.judge-string-footer`と`.judge-string-main`は`.screen.active { display:flex; flex-direction:column; }`内の**兄弟要素として縦に並んでいるだけ**（`getBoundingClientRect()`で実測: 重なりゼロ）と判明。`.home-main`は自身の`overflow-y:auto`でスクロール外のコンテンツを自分の枠内でクリップするため、フッターの背後には透けて見えるべきコンテンツがそもそも存在せず、半透明化だけでは何も変わらなかった
+- **最終修正**: `.judge-string-footer`を`position: absolute; left:0; right:0; bottom:0; z-index:1;`にし、`.judge-string-main`（`flex:1`のスクロール領域）の**上に重なる**構造に変更。`.judge-string-main`に`padding-bottom: 80px`（フッター高さ分の固定値）を追加し、最後のコンテンツ行がフッターの真裏に完全に隠れきらずスクロールして通過できるようにした。フッターは`.screen`の`position: fixed`を基準にした`position: absolute`のため、`.screen`の既存`padding-bottom: env(safe-area-inset-bottom)`はそのまま活きる（挙動変化なし）。タップ判定は標準のDOM重なり規則に従うため追加の`pointer-events`指定は不要（`elementFromPoint()`で、フッターの半透明領域・確定ボタンともフッター自身が正しく受け取り、背後のコンテンツへタップが突き抜けないことを確認済み）
+- **検証**: claude-in-chromeで両画面（`#screen-judge-strings`・`#screen-practice-settings`）のオーバーフロー再現状態で、出題度数ボタン等がフッター越しにうっすら透けて見えることをスクリーンショットで確認。`elementFromPoint()`でタップ判定の正しさを確認。コンテンツが少なくスクロール不要な場合（アルペジオモードの判定弦選択画面）でもレイアウトが崩れないことを確認。スライダー操作・確定ボタンクリックによる画面遷移への回帰もなし
+- **教訓**: 同種のスクロールヒントが必要になった際は、まずシンプルな静的実装を検討し、動的な演出（CSSのみ・JSのみ問わず）は本当に必要な場合のみ慎重に検討すること。今回は3回の試行錯誤を経て、「常に同じ見た目で状態を持たない」実装が最も確実だった
+- **iOS Safari実機での最終確認**: ユーザー側で実施
+- `sw.js` を `fretboard-v42` に更新（v1.20.3内での試行錯誤中、`fretboard-v40`→`fretboard-v41`→`fretboard-v42`と複数回更新）
 
 ---
 
